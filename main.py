@@ -1,6 +1,6 @@
 import argparse
 import csv
-from typing import List, Dict
+from typing import List, Dict, Set
 
 from AllowedAggregationFunction import AllowedAggregationFunction
 
@@ -41,13 +41,13 @@ def parseInputFunctionName(functionName: str) -> AllowedAggregationFunction:
 
 
 def getPossibleSubsetsAggregations(
-        functionType: AllowedAggregationFunction, dataset: List[List[int]]
-) -> List[List[int]]:
+        functionType: AllowedAggregationFunction, dataset: List[List[int]], aggregationIndex: int
+) -> List[int]:
     match functionType:
         case AllowedAggregationFunction.MIN:
-            return dataset
+            return [row[aggregationIndex] for row in dataset]
         case AllowedAggregationFunction.MAX:
-            return dataset
+            return [row[aggregationIndex] for row in dataset]
 
 
 def groupByIndexValue(dataset: List[List[int]], index: int) -> Dict[int, List[List[int]]]:
@@ -62,10 +62,54 @@ def groupByIndexValue(dataset: List[List[int]], index: int) -> Dict[int, List[Li
     return dict(sorted(result.items()))
 
 
+def maxBoundedAggregation(
+        dataset: List[List[int]], aggregationAttributeIndex: int, lowerBound: int, upperBound: int
+) -> Set[int]:
+    result = set()
+    for datasetTuple in dataset:
+        if lowerBound <= datasetTuple[aggregationAttributeIndex] <= upperBound:
+            result.add(datasetTuple[aggregationAttributeIndex])
+    return result
+
+
+def optimalSolution(
+        groupedRows: Dict[int, List[List[int]]],
+        aggregationAttributeIndex: int,
+        subsetsAggregations: List[int],
+        boundary: int
+) -> Set[int]:
+    solution = maxBoundedAggregation(
+        next(iter(groupedRows.values())), aggregationAttributeIndex, min(subsetsAggregations), boundary
+    )
+    for key in groupedRows:
+        for upperBound in subsetsAggregations:
+            solution = solution.union(
+                maxBoundedAggregation(groupedRows[key], aggregationAttributeIndex, upperBound, boundary)
+            )
+    return solution
+
+
 if __name__ == '__main__':
     args = getInputArguments()
 
     data = parseCsvToList(args.datasetFileName)
     aggregationFunction = parseInputFunctionName(args.aggregationFunction)
 
-    possibleSubsetsAggregations = getPossibleSubsetsAggregations(aggregationFunction, data)
+    possibleSubsetsAggregations = getPossibleSubsetsAggregations(
+        aggregationFunction, data, args.aggregationAttributeIndex
+    )
+    groupedRowsByValue = groupByIndexValue(data, args.conditionAttributeIndex)
+
+    print("Data is: ", data)
+    print("Aggregation function: ", aggregationFunction)
+    print("Possible subsets is: ", possibleSubsetsAggregations)
+    print("Grouped rows is: ", groupedRowsByValue)
+    print(
+        "Optimal solution is: ",
+        optimalSolution(
+            groupedRowsByValue,
+            args.aggregationAttributeIndex,
+            possibleSubsetsAggregations,
+            max(possibleSubsetsAggregations)
+        )
+    )
