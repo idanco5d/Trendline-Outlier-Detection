@@ -4,6 +4,7 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from AllowedAggregationFunction import AllowedAggregationFunction
+from BoundedAggregation import getBoundedAggregation
 from InputParser import getParsedInput
 
 
@@ -19,73 +20,6 @@ def getPossibleSubsetsAggregations(
             return set(range(len(dataFrame.iloc[aggregationIndex])))
 
 
-def maxBoundedAggregation(
-        dataFrame: pd.DataFrame,
-        aggregationAttributeInd: int,
-        lowerBound: int,
-        upperBound: int
-) -> pd.DataFrame:
-    emptyFrame = pd.DataFrame(columns=dataFrame.columns)
-    result = emptyFrame
-    maxValue: int = -2 ** 31
-
-    for index, datasetTuple in dataFrame.iterrows():
-        currentValue = datasetTuple.iloc[aggregationAttributeInd]
-        if currentValue <= upperBound:
-            result.loc[index] = datasetTuple
-        if currentValue > maxValue:
-            maxValue = currentValue
-
-    if maxValue < lowerBound:
-        return emptyFrame
-    return result
-
-
-def minBoundedAggregation(
-        dataFrame: pd.DataFrame,
-        aggregationAttributeInd: int,
-        lowerBound: int,
-        upperBound: int
-) -> pd.DataFrame:
-    emptyFrame: pd.DataFrame = pd.DataFrame(columns=dataFrame.columns)
-    result = emptyFrame
-    minValue: int = 2 ** 31
-
-    for index, datasetTuple in dataFrame.iterrows():
-        currentValue = datasetTuple.iloc[aggregationAttributeInd]
-        if currentValue >= lowerBound:
-            result.loc[index] = datasetTuple
-        if currentValue < minValue:
-            minValue = currentValue
-
-    if minValue > upperBound:
-        return emptyFrame
-    return result
-
-
-# def countDistinctBoundedAggregation(
-#         dataFrame: pd.DataFrame,
-#         aggregationAttributeInd: int,
-#         lowerBound: int,
-#         upperBound: int
-# ) -> pd.DataFrame:
-#     counts_dict = dataFrame.iloc[:, aggregationAttributeInd].value_counts().to_dict()
-
-
-def getBoundedAggregation(
-        allowedAggregationFunction: AllowedAggregationFunction,
-        dataFrame: pd.DataFrame,
-        aggregationAttributeInd: int,
-        lowerBound: int,
-        upperBound: int
-) -> pd.DataFrame:
-    match allowedAggregationFunction:
-        case AllowedAggregationFunction.MAX:
-            return maxBoundedAggregation(dataFrame, aggregationAttributeInd, lowerBound, upperBound)
-        case AllowedAggregationFunction.MIN:
-            return minBoundedAggregation(dataFrame, aggregationAttributeInd, lowerBound, upperBound)
-
-
 def dataFrameUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     combined_df = pd.concat([df1, df2])
     result_df = combined_df[~combined_df.index.duplicated(keep='first')]
@@ -94,7 +28,7 @@ def dataFrameUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
 
 
 def optimalSolution(
-        aggregationFunction: AllowedAggregationFunction,
+        function: AllowedAggregationFunction,
         groupedRows: DataFrameGroupBy,
         aggregationAttributeInd: int,
         possibleAggregations: Set[int],
@@ -105,7 +39,7 @@ def optimalSolution(
     )
 
     solution = getBoundedAggregation(
-        aggregationFunction,
+        function,
         firstGroup,
         aggregationAttributeInd,
         min(possibleAggregations),
@@ -121,7 +55,7 @@ def optimalSolution(
 
         for possibleAggregation in possibleAggregations:
             currBoundedAggregation = getBoundedAggregation(
-                aggregationFunction, currGroup, aggregationAttributeInd, possibleAggregation, boundary
+                function, currGroup, aggregationAttributeInd, possibleAggregation, boundary
             )
             currSolution = dataFrameUnion(solution, currBoundedAggregation)
 
@@ -134,19 +68,19 @@ def optimalSolution(
 
 
 if __name__ == '__main__':
-    aggrFunction, data, aggregationAttributeIndex, groupedRowsByValue = getParsedInput()
+    aggregationFunction, data, aggregationAttributeIndex, groupedRowsByValue = getParsedInput()
 
     possibleSubsetsAggregations = getPossibleSubsetsAggregations(
-        aggrFunction, data, aggregationAttributeIndex
+        aggregationFunction, data, aggregationAttributeIndex
     )
 
     print("Data is: ", data)
-    print("Aggregation function: ", aggrFunction)
+    print("Aggregation function: ", aggregationFunction)
     print("Possible subsets aggregations are: ", possibleSubsetsAggregations)
     print(
         "Optimal solution is: ",
         optimalSolution(
-            aggrFunction,
+            aggregationFunction,
             groupedRowsByValue,
             aggregationAttributeIndex,
             possibleSubsetsAggregations,
