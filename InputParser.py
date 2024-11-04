@@ -7,11 +7,20 @@ from pandas.core.groupby import DataFrameGroupBy
 from AllowedAggregationFunction import AllowedAggregationFunction
 
 
+def getParsedInput() -> (AllowedAggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
+    args = getInputArguments()
+    data = parseCsvToDataFrame(args.datasetFileName)
+    aggregationFunction = getInputFunctionName(args.aggregationFunction)
+    groupedRowsByValue = data.groupby(args.groupingAttributeName)
+
+    return aggregationFunction, data, args.aggregationAttributeIndex, groupedRowsByValue
+
+
 def getInputArguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('aggregationFunction', type=str, help='Chosen aggregation function')
     parser.add_argument('datasetFileName', type=str, help='Your dataset csv file')
-    parser.add_argument('conditionAttributeName', type=str, help='Name of the condition attribute')
+    parser.add_argument('groupingAttributeName', type=str, help='Name of the grouping attribute')
     parser.add_argument('aggregationAttributeIndex', type=int, help='Name of the aggregated attribute')
     return parser.parse_args()
 
@@ -39,14 +48,5 @@ def getInputFunctionName(functionName: str) -> AllowedAggregationFunction:
             return AllowedAggregationFunction.SUM
         case "AVG":
             return AllowedAggregationFunction.AVG
-        case _:
-            raise ValueError(f"Unrecognized aggregation function: {functionName}")
 
-
-def getParsedInput() -> (AllowedAggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
-    args = getInputArguments()
-    data = parseCsvToDataFrame(args.datasetFileName)
-    aggrFunction = getInputFunctionName(args.aggregationFunction)
-    groupedRowsByValue = data.groupby(args.conditionAttributeName)
-
-    return aggrFunction, data, args.aggregationAttributeIndex, groupedRowsByValue
+    raise ValueError(f"Unrecognized aggregation function: {functionName}")

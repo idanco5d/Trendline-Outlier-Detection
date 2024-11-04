@@ -4,31 +4,34 @@ from AllowedAggregationFunction import AllowedAggregationFunction
 
 
 def getBoundedAggregation(
-        allowedAggregationFunction: AllowedAggregationFunction,
+        aggregationFunction: AllowedAggregationFunction,
         dataFrame: pd.DataFrame,
-        aggregationAttributeInd: int,
+        aggregationAttributeIndex: int,
         lowerBound: int,
         upperBound: int
 ) -> pd.DataFrame:
-    match allowedAggregationFunction:
+    match aggregationFunction:
         case AllowedAggregationFunction.MAX:
-            return maxBoundedAggregation(dataFrame, aggregationAttributeInd, lowerBound, upperBound)
+            return maxBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
         case AllowedAggregationFunction.MIN:
-            return minBoundedAggregation(dataFrame, aggregationAttributeInd, lowerBound, upperBound)
+            return minBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
+        case AllowedAggregationFunction.COUNT_DISTINCT:
+            return countDistinctBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
 
 
 def maxBoundedAggregation(
         dataFrame: pd.DataFrame,
-        aggregationAttributeInd: int,
+        aggregationAttributeIndex: int,
         lowerBound: int,
         upperBound: int
 ) -> pd.DataFrame:
     emptyFrame = pd.DataFrame(columns=dataFrame.columns)
+
     result = emptyFrame
     maxValue: int = -2 ** 31
 
     for index, datasetTuple in dataFrame.iterrows():
-        currentValue = datasetTuple.iloc[aggregationAttributeInd]
+        currentValue = datasetTuple.iloc[aggregationAttributeIndex]
         if currentValue <= upperBound:
             result.loc[index] = datasetTuple
         if currentValue > maxValue:
@@ -41,7 +44,7 @@ def maxBoundedAggregation(
 
 def minBoundedAggregation(
         dataFrame: pd.DataFrame,
-        aggregationAttributeInd: int,
+        aggregationAttributeIndex: int,
         lowerBound: int,
         upperBound: int
 ) -> pd.DataFrame:
@@ -50,7 +53,7 @@ def minBoundedAggregation(
     minValue: int = 2 ** 31
 
     for index, datasetTuple in dataFrame.iterrows():
-        currentValue = datasetTuple.iloc[aggregationAttributeInd]
+        currentValue = datasetTuple.iloc[aggregationAttributeIndex]
         if currentValue >= lowerBound:
             result.loc[index] = datasetTuple
         if currentValue < minValue:
@@ -61,10 +64,27 @@ def minBoundedAggregation(
     return result
 
 
-# def countDistinctBoundedAggregation(
-#         dataFrame: pd.DataFrame,
-#         aggregationAttributeInd: int,
-#         lowerBound: int,
-#         upperBound: int
-# ) -> pd.DataFrame:
-#     counts_dict = dataFrame.iloc[:, aggregationAttributeInd].value_counts().to_dict()
+def countDistinctBoundedAggregation(
+        dataFrame: pd.DataFrame,
+        aggregationAttributeIndex: int,
+        lowerBound: int,
+        upperBound: int
+) -> pd.DataFrame:
+    result_df = dataFrame.copy()
+
+    while True:
+        counts_dict = result_df.iloc[:, aggregationAttributeIndex].value_counts().to_dict()
+
+        if max(counts_dict.values()) <= upperBound:
+            break
+
+        min_count = min(counts_dict.values())
+        least_common_values = [val for val, count in counts_dict.items()
+                               if count == min_count]
+
+        result_df = result_df[~result_df.iloc[:, aggregationAttributeIndex].isin(least_common_values)]
+
+    if max(counts_dict.values()) < lowerBound:
+        return pd.DataFrame(columns=dataFrame.columns)
+
+    return result_df
