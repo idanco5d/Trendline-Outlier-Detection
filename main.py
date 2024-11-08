@@ -122,22 +122,28 @@ def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return result_df.sort_index()
 
 
+def calculateRemovedTuples(originalDataFrame: pd.DataFrame, containedDataFrame: pd.DataFrame) -> pd.DataFrame:
+    mergedDataFrame = originalDataFrame.merge(containedDataFrame, how='outer', indicator=True)
+    differenceDf = mergedDataFrame[mergedDataFrame['_merge'] == 'left_only']
+
+    return differenceDf.drop(columns=['_merge'])
+
+
 if __name__ == '__main__':
     inputFunction, data, aggregationIndex, groupedRowsByValue = parseInput()
 
     possibleSubsetsAggregations = getPossibleSubsetsAggregations(
         inputFunction, data, aggregationIndex, groupedRowsByValue
     )
-
-    print("Data is: \n", data)
-    print("Aggregation function: ", inputFunction)
-    print("Possible subsets aggregations are: ", possibleSubsetsAggregations)
-    print(
-        "Optimal solution is: \n",
-        calculateOptimalSolution(
-            inputFunction,
-            groupedRowsByValue,
-            aggregationIndex,
-            possibleSubsetsAggregations,
-        )
+    solution = calculateOptimalSolution(
+        inputFunction,
+        groupedRowsByValue,
+        aggregationIndex,
+        possibleSubsetsAggregations
     )
+
+    print("The parsed data is: \n", data)
+    print("Input aggregation function: ", inputFunction)
+    print("Possible subsets aggregations are: ", possibleSubsetsAggregations)
+    print("Optimal solution is: \n", solution)
+    print("The removed tuples are: \n", calculateRemovedTuples(data, solution))
