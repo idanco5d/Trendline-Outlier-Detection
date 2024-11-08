@@ -22,7 +22,7 @@ def aggregate(
         case AllowedAggregationFunction.COUNT:
             return len(aggregationColumn)
         case AllowedAggregationFunction.COUNT_DISTINCT:
-            return len(aggregationColumn.unique())
+            return aggregationColumn.nunique()
         case AllowedAggregationFunction.SUM:
             return sum(aggregationColumn)
         case AllowedAggregationFunction.AVG:

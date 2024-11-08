@@ -1,3 +1,5 @@
+from typing import Dict
+
 import pandas as pd
 
 from AllowedAggregationFunction import AllowedAggregationFunction
@@ -15,6 +17,8 @@ def getBoundedAggregation(
             return maxBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
         case AllowedAggregationFunction.MIN:
             return minBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
+        case AllowedAggregationFunction.COUNT:
+            return countBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
         case AllowedAggregationFunction.COUNT_DISTINCT:
             return countDistinctBoundedAggregation(dataFrame, aggregationAttributeIndex, lowerBound, upperBound)
 
@@ -25,9 +29,9 @@ def maxBoundedAggregation(
         lowerBound: int,
         upperBound: int
 ) -> pd.DataFrame:
-    emptyFrame = pd.DataFrame(columns=dataFrame.columns)
+    emptyFrame = emptyDataFrame(dataFrame.columns)
 
-    result = emptyFrame
+    result = emptyFrame.copy()
     maxValue: int = -2 ** 31
 
     for index, datasetTuple in dataFrame.iterrows():
@@ -48,8 +52,8 @@ def minBoundedAggregation(
         lowerBound: int,
         upperBound: int
 ) -> pd.DataFrame:
-    emptyFrame: pd.DataFrame = pd.DataFrame(columns=dataFrame.columns)
-    result = emptyFrame
+    emptyFrame = emptyDataFrame(dataFrame.columns)
+    result = emptyFrame.copy()
     minValue: int = 2 ** 31
 
     for index, datasetTuple in dataFrame.iterrows():
@@ -64,27 +68,55 @@ def minBoundedAggregation(
     return result
 
 
+def countBoundedAggregation(
+        dataFrame: pd.DataFrame,
+        aggregationAttributeIndex: int,
+        lowerBound: int,
+        upperBound: int
+) -> pd.DataFrame:
+    emptyFrame = emptyDataFrame(dataFrame.columns)
+    aggregatedColumn = dataFrame.iloc[:, aggregationAttributeIndex]
+    aggregatedColumnSize = len(aggregatedColumn)
+
+    if aggregatedColumnSize < lowerBound:
+        return emptyFrame
+
+    amountTuplesToReturn = min(upperBound, aggregatedColumnSize)
+
+    return dataFrame.iloc[:amountTuplesToReturn]
+
+
 def countDistinctBoundedAggregation(
         dataFrame: pd.DataFrame,
         aggregationAttributeIndex: int,
         lowerBound: int,
         upperBound: int
 ) -> pd.DataFrame:
-    result_df = dataFrame.copy()
+    result = dataFrame.copy()
 
     while True:
-        counts_dict = result_df.iloc[:, aggregationAttributeIndex].value_counts().to_dict()
+        aggregatedColumn = result.iloc[:, aggregationAttributeIndex]
+        valuesCount: Dict[int, int] = aggregatedColumn.value_counts().to_dict()
+        countDistinct: int = aggregatedColumn.nunique()
 
-        if max(counts_dict.values()) <= upperBound:
+        if countDistinct <= upperBound:
             break
 
-        min_count = min(counts_dict.values())
-        least_common_values = [val for val, count in counts_dict.items()
-                               if count == min_count]
+        values = valuesCount.values()
+        if len(values) == 0:
+            break
 
-        result_df = result_df[~result_df.iloc[:, aggregationAttributeIndex].isin(least_common_values)]
+        minCount = min(values)
+        leastCommonValues = [val for val, count in valuesCount.items() if count == minCount]
 
-    if max(counts_dict.values()) < lowerBound:
-        return pd.DataFrame(columns=dataFrame.columns)
+        result = result[~aggregatedColumn.isin(leastCommonValues)]
 
-    return result_df
+    if countDistinct < lowerBound:
+        return emptyDataFrame(dataFrame.columns)
+
+    return result
+
+
+def emptyDataFrame(baseDfColumns) -> pd.DataFrame:
+    return pd.DataFrame(columns=baseDfColumns)
+

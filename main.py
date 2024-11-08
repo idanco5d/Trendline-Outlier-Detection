@@ -5,19 +5,27 @@ from pandas.core.groupby import DataFrameGroupBy
 
 from AllowedAggregationFunction import AllowedAggregationFunction, aggregate
 from BoundedAggregation import getBoundedAggregation
-from InputParser import getParsedInput
+from InputParser import parseInput
 
 
 def getPossibleSubsetsAggregations(
-        functionType: AllowedAggregationFunction, dataFrame: pd.DataFrame, aggregationIndex: int
+        functionType: AllowedAggregationFunction,
+        dataFrame: pd.DataFrame,
+        aggregateIndex: int,
+        groupedRows: DataFrameGroupBy
 ) -> Set[int]:
     match functionType:
         case AllowedAggregationFunction.MAX:
-            return set(dataFrame.iloc[:, aggregationIndex])
+            return set(dataFrame.iloc[:, aggregateIndex])
         case AllowedAggregationFunction.MIN:
-            return set(dataFrame.iloc[:, aggregationIndex])
+            return set(dataFrame.iloc[:, aggregateIndex])
+        case AllowedAggregationFunction.COUNT:
+            groupsSizes = groupedRows.size()
+            return set(range(groupsSizes.max() + 1))
         case AllowedAggregationFunction.COUNT_DISTINCT:
-            return set(range(len(dataFrame.iloc[aggregationIndex])))
+            return set(range(len(dataFrame.iloc[:, aggregateIndex].unique()) + 1))
+        case _:
+            raise ValueError(f'Unsupported aggregation function: {functionType}')
 
 
 def calculateOptimalSolution(
@@ -49,7 +57,6 @@ def calculateOptimalSolution(
             for j in range(i, possibleAggregationsLength):
                 lowerBound = sortedPossibleAggregations[i]
                 upperBound = sortedPossibleAggregations[j]
-                print("For lower bound: ", lowerBound, " and upper bound: ", upperBound)
 
                 intermediateSolution = calculateIntermediateSolution(
                     aggregationAttributeIndex,
@@ -61,7 +68,6 @@ def calculateOptimalSolution(
                     possibleSolutions,
                     upperBound
                 )
-                print("Intermediate solution is: ", intermediateSolution)
 
                 intermediateSolutions[(lowerBound, upperBound)] = intermediateSolution
 
@@ -86,8 +92,6 @@ def calculateMinimalValueGroupSolution(aggregationAttributeIndex, aggregationFun
             min(possibleAggregations),
             upperBound
         )
-        print("For bound: ", upperBound)
-        print("Minimal value group solution is: ", possibleSolutions[0][upperBound])
 
 
 def calculateIntermediateSolution(aggregationAttributeIndex, aggregationFunction, currentIndex, groupedRows,
@@ -119,10 +123,10 @@ def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == '__main__':
-    inputFunction, data, aggregationIndex, groupedRowsByValue = getParsedInput()
+    inputFunction, data, aggregationIndex, groupedRowsByValue = parseInput()
 
     possibleSubsetsAggregations = getPossibleSubsetsAggregations(
-        inputFunction, data, aggregationIndex
+        inputFunction, data, aggregationIndex, groupedRowsByValue
     )
 
     print("Data is: \n", data)

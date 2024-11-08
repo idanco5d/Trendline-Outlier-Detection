@@ -1,5 +1,6 @@
 import argparse
 import csv
+from typing import List
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -7,21 +8,23 @@ from pandas.core.groupby import DataFrameGroupBy
 from AllowedAggregationFunction import AllowedAggregationFunction
 
 
-def getParsedInput() -> (AllowedAggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
+def parseInput() -> (AllowedAggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
     args = getInputArguments()
     data = parseCsvToDataFrame(args.datasetFileName)
-    aggregationFunction = getInputFunctionName(args.aggregationFunction)
-    groupedRowsByValue = data.groupby(args.groupingAttributeName)
 
-    return aggregationFunction, data, args.aggregationAttributeIndex, groupedRowsByValue
+    return (getAggregationFunctionFromInput(args.aggregationFunction),
+            data,
+            getAggregationAttributeIndexByName(data, args.aggregationAttributeName),
+            groupFrameByValues(data, args.groupingAttributeName))
 
 
 def getInputArguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('aggregationFunction', type=str, help='Chosen aggregation function')
     parser.add_argument('datasetFileName', type=str, help='Your dataset csv file')
+    parser.add_argument('aggregationAttributeName', type=str, help='Name of the aggregated attribute')
     parser.add_argument('groupingAttributeName', type=str, help='Name of the grouping attribute')
-    parser.add_argument('aggregationAttributeIndex', type=int, help='Name of the aggregated attribute')
+
     return parser.parse_args()
 
 
@@ -34,7 +37,7 @@ def parseCsvToDataFrame(filename: str) -> pd.DataFrame:
     return pd.DataFrame(dataset, columns=header, index=range(len(dataset)))
 
 
-def getInputFunctionName(functionName: str) -> AllowedAggregationFunction:
+def getAggregationFunctionFromInput(functionName: str) -> AllowedAggregationFunction:
     match functionName:
         case "MAX":
             return AllowedAggregationFunction.MAX
@@ -50,3 +53,21 @@ def getInputFunctionName(functionName: str) -> AllowedAggregationFunction:
             return AllowedAggregationFunction.AVG
 
     raise ValueError(f"Unrecognized aggregation function: {functionName}")
+
+
+def getAggregationAttributeIndexByName(data: pd.DataFrame, aggregationAttributeName: str) -> int:
+    try:
+        aggregationAttributeIndex = data.columns.get_loc(aggregationAttributeName)
+    except KeyError:
+        raise ValueError('Invalid aggregation attribute name')
+
+    return aggregationAttributeIndex
+
+
+def groupFrameByValues(data: pd.DataFrame, groupingAttributeName: str) -> DataFrameGroupBy:
+    try:
+        groupedRowsByValue = data.groupby(groupingAttributeName)
+    except KeyError:
+        raise ValueError('Invalid grouping attribute name')
+
+    return groupedRowsByValue
