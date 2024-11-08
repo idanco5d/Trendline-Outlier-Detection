@@ -5,6 +5,9 @@ import pandas as pd
 from AllowedAggregationFunction import AllowedAggregationFunction
 
 
+# TODO remove file after creating the abstract class
+
+
 def getBoundedAggregation(
         aggregationFunction: AllowedAggregationFunction,
         dataFrame: pd.DataFrame,
@@ -119,4 +122,3 @@ def countDistinctBoundedAggregation(
 
 def emptyDataFrame(baseDfColumns) -> pd.DataFrame:
     return pd.DataFrame(columns=baseDfColumns)
-
