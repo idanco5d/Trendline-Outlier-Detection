@@ -1,22 +1,17 @@
-from AllowedAggregationFunction import getPossibleSubsetsAggregations
 from InputParser import parseInput
 from OptimalSubsetWithConstraint import calculateOptimalSubsetWithConstraint, calculateRemovedTuples
 
 if __name__ == '__main__':
-    inputFunction, data, aggregationIndex, groupedRowsByValue = parseInput()
+    aggregationFunction, data, aggregationIndex, groupedRowsByValue = parseInput()
+    possibleSubsetsAggregations = aggregationFunction.getPossibleSubsetsAggregations(
+        data, aggregationIndex, groupedRowsByValue
+    )
 
-    possibleSubsetsAggregations = getPossibleSubsetsAggregations(
-        inputFunction, data, aggregationIndex, groupedRowsByValue
-    )
-    solution = calculateOptimalSubsetWithConstraint(
-        inputFunction,
-        groupedRowsByValue,
-        aggregationIndex,
-        possibleSubsetsAggregations
-    )
+    solution = calculateOptimalSubsetWithConstraint(groupedRowsByValue, aggregationFunction,
+                                                    possibleSubsetsAggregations, aggregationIndex)
 
     print("The parsed data is: \n", data)
-    print("Input aggregation function: ", inputFunction)
+    print("Input aggregation function: ", aggregationFunction)
     print("Possible subsets aggregations are: ", possibleSubsetsAggregations)
     print("Optimal solution is: \n", solution)
     print("The removed tuples are: \n", calculateRemovedTuples(data, solution))

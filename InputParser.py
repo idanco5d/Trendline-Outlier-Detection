@@ -1,21 +1,26 @@
 import argparse
 import csv
-from typing import List
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from AllowedAggregationFunction import AllowedAggregationFunction
+from AggregationFunctions.AggregationFunction import AggregationFunction
+from AggregationFunctions.AverageFunction import AverageFunction
+from AggregationFunctions.CountDistinctFunction import CountDistinctFunction
+from AggregationFunctions.CountFunction import CountFunction
+from AggregationFunctions.MaxFunction import MaxFunction
+from AggregationFunctions.MinFunction import MinFunction
+from AggregationFunctions.SumFunction import SumFunction
 
 
-def parseInput() -> (AllowedAggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
+def parseInput() -> (AggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
     args = getInputArguments()
     data = parseCsvToDataFrame(args.datasetFileName)
 
     return (getAggregationFunctionFromInput(args.aggregationFunction),
             data,
             getAggregationAttributeIndexByName(data, args.aggregationAttributeName),
-            groupFrameByValues(data, args.groupingAttributeName))
+            groupFrameByAttributes(data, args.groupingAttributeName))
 
 
 def getInputArguments() -> argparse.Namespace:
@@ -37,20 +42,20 @@ def parseCsvToDataFrame(filename: str) -> pd.DataFrame:
     return pd.DataFrame(dataset, columns=header, index=range(len(dataset)))
 
 
-def getAggregationFunctionFromInput(functionName: str) -> AllowedAggregationFunction:
+def getAggregationFunctionFromInput(functionName: str) -> AggregationFunction:
     match functionName:
         case "MAX":
-            return AllowedAggregationFunction.MAX
+            return MaxFunction()
         case "MIN":
-            return AllowedAggregationFunction.MIN
+            return MinFunction()
         case "COUNT":
-            return AllowedAggregationFunction.COUNT
+            return CountFunction()
         case "COUNT_DISTINCT":
-            return AllowedAggregationFunction.COUNT_DISTINCT
+            return CountDistinctFunction()
         case "SUM":
-            return AllowedAggregationFunction.SUM
+            return SumFunction()
         case "AVG":
-            return AllowedAggregationFunction.AVG
+            return AverageFunction()
 
     raise ValueError(f"Unrecognized aggregation function: {functionName}")
 
@@ -64,7 +69,7 @@ def getAggregationAttributeIndexByName(data: pd.DataFrame, aggregationAttributeN
     return aggregationAttributeIndex
 
 
-def groupFrameByValues(data: pd.DataFrame, groupingAttributeName: str) -> DataFrameGroupBy:
+def groupFrameByAttributes(data: pd.DataFrame, groupingAttributeName: str) -> DataFrameGroupBy:
     try:
         groupedRowsByValue = data.groupby(groupingAttributeName)
     except KeyError:
