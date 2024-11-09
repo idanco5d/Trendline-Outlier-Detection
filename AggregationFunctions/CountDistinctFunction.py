@@ -3,7 +3,8 @@ from typing import Set, Dict
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from AggregationFunctions.AggregationFunction import AggregationFunction, emptyDataFrame
+from AggregationFunctions.AggregationFunction import AggregationFunction
+from Utils import emptyDataFrame, getAggregatedColumn
 
 
 class CountDistinctFunction(AggregationFunction):
@@ -13,8 +14,7 @@ class CountDistinctFunction(AggregationFunction):
         return set(range(len(dataFrame.iloc[:, aggregationAttributeIndex].unique()) + 1))
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
-        aggregationColumn = dataFrame.iloc[:, aggregationAttributeIndex]
-        return aggregationColumn.nunique()
+        return getAggregatedColumn(dataFrame, aggregationAttributeIndex).nunique()
 
     def getBoundedAggregation(
             self,
@@ -26,7 +26,7 @@ class CountDistinctFunction(AggregationFunction):
         result = dataFrame.copy()
 
         while True:
-            aggregatedColumn = result.iloc[:, aggregationAttributeIndex]
+            aggregatedColumn = getAggregatedColumn(result, aggregationAttributeIndex)
             valuesCount: Dict[int, int] = aggregatedColumn.value_counts().to_dict()
             countDistinct: int = aggregatedColumn.nunique()
 

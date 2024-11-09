@@ -4,6 +4,7 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
+from Utils import getAggregatedColumn
 
 
 class SumFunction(AggregationFunction):
@@ -13,8 +14,7 @@ class SumFunction(AggregationFunction):
         pass
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
-        aggregationColumn = dataFrame.iloc[:, aggregationAttributeIndex]
-        return sum(aggregationColumn)
+        return sum(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
     def getBoundedAggregation(
             self,

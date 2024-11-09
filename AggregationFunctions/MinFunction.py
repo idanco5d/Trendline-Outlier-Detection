@@ -3,18 +3,18 @@ from typing import Set
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from AggregationFunctions.AggregationFunction import AggregationFunction, emptyDataFrame
+from AggregationFunctions.AggregationFunction import AggregationFunction
+from Utils import emptyDataFrame, getAggregatedColumn
 
 
 class MinFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
             self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
     ) -> Set[int]:
-        return set(dataFrame.iloc[:, aggregationAttributeIndex])
+        return set(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
-        aggregationColumn = dataFrame.iloc[:, aggregationAttributeIndex]
-        return min(aggregationColumn)
+        return min(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
     def getBoundedAggregation(
             self,

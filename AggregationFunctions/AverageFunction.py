@@ -4,6 +4,7 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
+from Utils import getAggregatedColumn
 
 
 class AverageFunction(AggregationFunction):
@@ -13,8 +14,8 @@ class AverageFunction(AggregationFunction):
         pass
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
-        aggregationColumn = dataFrame.iloc[:, aggregationAttributeIndex]
-        return sum(aggregationColumn) / len(aggregationColumn)
+        aggregationColumn = getAggregatedColumn(dataFrame, aggregationAttributeIndex)
+        return int(sum(aggregationColumn) / len(aggregationColumn))
 
     def getBoundedAggregation(
             self,

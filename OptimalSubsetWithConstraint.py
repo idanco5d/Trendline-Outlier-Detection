@@ -4,6 +4,7 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
+from Utils import listOfEmptyDictionaries
 
 
 def calculateOptimalSubsetWithConstraint(
@@ -47,10 +48,6 @@ def calculateOptimalSubsetWithConstraint(
                     possibleSolutions[currentIndex][upperBound] = intermediateSolution
 
         return max(possibleSolutions[-1].values(), key=lambda df: df.size)
-
-
-def listOfEmptyDictionaries(outputListLength: int) -> List[Dict[int, pd.DataFrame]]:
-    return [{} for _ in range(outputListLength)]
 
 
 def calculateMinimalValueGroupSolution(
@@ -102,10 +99,3 @@ def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     result_df = combined_df[~combined_df.index.duplicated(keep='first')]
 
     return result_df.sort_index()
-
-
-def calculateRemovedTuples(originalDataFrame: pd.DataFrame, containedDataFrame: pd.DataFrame) -> pd.DataFrame:
-    mergedDataFrame = originalDataFrame.merge(containedDataFrame, how='outer', indicator=True)
-    differenceDf = mergedDataFrame[mergedDataFrame['_merge'] == 'left_only']
-
-    return differenceDf.drop(columns=['_merge'])

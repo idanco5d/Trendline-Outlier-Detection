@@ -3,7 +3,8 @@ from typing import Set
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from AggregationFunctions.AggregationFunction import AggregationFunction, emptyDataFrame
+from AggregationFunctions.AggregationFunction import AggregationFunction
+from Utils import emptyDataFrame, getAggregatedColumn
 
 
 class CountFunction(AggregationFunction):
@@ -14,8 +15,7 @@ class CountFunction(AggregationFunction):
         return set(range(groupsSizes.max() + 1))
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
-        aggregationColumn = dataFrame.iloc[:, aggregationAttributeIndex]
-        return len(aggregationColumn)
+        return len(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
     def getBoundedAggregation(
             self,
@@ -25,7 +25,7 @@ class CountFunction(AggregationFunction):
             upperBound: int
     ) -> pd.DataFrame:
         emptyFrame = emptyDataFrame(dataFrame.columns)
-        aggregatedColumn = dataFrame.iloc[:, aggregationAttributeIndex]
+        aggregatedColumn = getAggregatedColumn(dataFrame, aggregationAttributeIndex)
         aggregatedColumnSize = len(aggregatedColumn)
 
         if aggregatedColumnSize < lowerBound:

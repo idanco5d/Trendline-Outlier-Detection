@@ -30,7 +30,3 @@ class AggregationFunction(ABC):
     @abstractmethod
     def __str__(self):
         pass
-
-
-def emptyDataFrame(baseDfColumns) -> pd.DataFrame:
-    return pd.DataFrame(columns=baseDfColumns)
