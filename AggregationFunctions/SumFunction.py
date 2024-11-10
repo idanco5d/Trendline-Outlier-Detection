@@ -16,7 +16,7 @@ class SumFunction(AggregationFunction):
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
         return sum(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
-    def getBoundedAggregation(
+    def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,

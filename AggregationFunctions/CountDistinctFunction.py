@@ -16,7 +16,7 @@ class CountDistinctFunction(AggregationFunction):
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
         return getAggregatedColumn(dataFrame, aggregationAttributeIndex).nunique()
 
-    def getBoundedAggregation(
+    def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,

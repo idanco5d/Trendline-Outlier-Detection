@@ -17,7 +17,7 @@ class AverageFunction(AggregationFunction):
         aggregationColumn = getAggregatedColumn(dataFrame, aggregationAttributeIndex)
         return int(sum(aggregationColumn) / len(aggregationColumn))
 
-    def getBoundedAggregation(
+    def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,

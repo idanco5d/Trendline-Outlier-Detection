@@ -16,7 +16,7 @@ class MinFunction(AggregationFunction):
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
         return min(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
-    def getBoundedAggregation(
+    def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,

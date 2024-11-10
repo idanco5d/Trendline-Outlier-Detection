@@ -18,7 +18,7 @@ class AggregationFunction(ABC):
         pass
 
     @abstractmethod
-    def getBoundedAggregation(
+    def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,

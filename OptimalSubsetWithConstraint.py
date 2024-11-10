@@ -4,7 +4,9 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
-from Utils import listOfEmptyDictionaries
+from Utils import listOfEmptyDictionaries, getGroupByKey, emptyDataFrame, dataFramesUnion
+
+# TODO fix cases with several rows of grouped
 
 
 def calculateOptimalSubsetWithConstraint(
@@ -14,7 +16,7 @@ def calculateOptimalSubsetWithConstraint(
         aggregationAttributeIndex: int
 ) -> pd.DataFrame:
     groupingValues = iter(groupedRows.groups.keys())
-    minimalValueGroup = groupedRows.get_group(next(groupingValues))
+    minimalValueGroup = getGroupByKey(groupedRows, next(groupingValues))
     possibleSolutions: List[Dict[int, pd.DataFrame]] = listOfEmptyDictionaries(len(groupedRows.groups.keys()))
 
     calculateMinimalValueGroupSolution(
@@ -47,7 +49,9 @@ def calculateOptimalSubsetWithConstraint(
                     intermediateSolutionMaxSize = len(intermediateSolution)
                     possibleSolutions[currentIndex][upperBound] = intermediateSolution
 
-        return max(possibleSolutions[-1].values(), key=lambda df: df.size)
+    if len(possibleSolutions[-1].values()) == 0:
+        return emptyDataFrame(minimalValueGroup.columns)
+    return max(possibleSolutions[-1].values(), key=lambda df: df.size)
 
 
 def calculateMinimalValueGroupSolution(
@@ -58,12 +62,13 @@ def calculateMinimalValueGroupSolution(
         aggregationAttributeIndex: int
 ):
     for upperBound in possibleAggregations:
-        possibleSolutions[0][upperBound] = aggregationFunction.getBoundedAggregation(
+        possibleSolutions[0][upperBound] = aggregationFunction.getAggregationPacking(
             minimalValueGroup,
             aggregationAttributeIndex,
             min(possibleAggregations),
             upperBound
         )
+        print("For bound", upperBound, "the first group solution is:\n", possibleSolutions[0][upperBound])
 
 
 def calculateIntermediateSolution(
@@ -76,26 +81,20 @@ def calculateIntermediateSolution(
         possibleSolutions: List[Dict[int, pd.DataFrame]],
         currentIndex: int
 ):
-    boundedAggregation = aggregationFunction.getBoundedAggregation(
-        groupedRows.get_group(groupingValue),
+    aggregationPacking = aggregationFunction.getAggregationPacking(
+        getGroupByKey(groupedRows, groupingValue),
         aggregationAttributeIndex,
         lowerBound,
         upperBound
     )
 
-    if len(boundedAggregation) == 0:
+    if len(aggregationPacking) == 0:
         intermediateSolution = possibleSolutions[currentIndex - 1][lowerBound]
     else:
-        aggregation = aggregationFunction.aggregate(boundedAggregation, aggregationAttributeIndex)
+        aggregation = aggregationFunction.aggregate(aggregationPacking, aggregationAttributeIndex)
         intermediateSolution = dataFramesUnion(
-            possibleSolutions[currentIndex - 1][aggregation], boundedAggregation
+            possibleSolutions[currentIndex - 1][aggregation], aggregationPacking
         )
 
     return intermediateSolution
 
-
-def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    combined_df = pd.concat([df1, df2])
-    result_df = combined_df[~combined_df.index.duplicated(keep='first')]
-
-    return result_df.sort_index()

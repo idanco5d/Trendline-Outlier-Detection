@@ -16,7 +16,7 @@ class MaxFunction(AggregationFunction):
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
         return max(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
-    def getBoundedAggregation(
+    def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,

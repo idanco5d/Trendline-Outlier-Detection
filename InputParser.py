@@ -1,5 +1,6 @@
 import argparse
 import csv
+from typing import List
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -20,7 +21,7 @@ def parseInput() -> (AggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
     return (getAggregationFunctionFromInput(args.aggregationFunction),
             data,
             getAggregationAttributeIndexByName(data, args.aggregationAttributeName),
-            groupFrameByAttributes(data, args.groupingAttributeName))
+            groupFrameByAttributes(data, args.groupingAttributesNames))
 
 
 def getInputArguments() -> argparse.Namespace:
@@ -28,7 +29,7 @@ def getInputArguments() -> argparse.Namespace:
     parser.add_argument('aggregationFunction', type=str, help='Chosen aggregation function')
     parser.add_argument('datasetFileName', type=str, help='Your dataset csv file')
     parser.add_argument('aggregationAttributeName', type=str, help='Name of the aggregated attribute')
-    parser.add_argument('groupingAttributeName', type=str, help='Name of the grouping attribute')
+    parser.add_argument('groupingAttributesNames', nargs='+', type=str, help='Names of the grouping attributes')
 
     return parser.parse_args()
 
@@ -69,9 +70,9 @@ def getAggregationAttributeIndexByName(data: pd.DataFrame, aggregationAttributeN
     return aggregationAttributeIndex
 
 
-def groupFrameByAttributes(data: pd.DataFrame, groupingAttributeName: str) -> DataFrameGroupBy:
+def groupFrameByAttributes(data: pd.DataFrame, groupingAttributesNames: List[str]) -> DataFrameGroupBy:
     try:
-        groupedRowsByValue = data.groupby(groupingAttributeName)
+        groupedRowsByValue = data.groupby(groupingAttributesNames)
     except KeyError:
         raise ValueError('Invalid grouping attribute name')
 
