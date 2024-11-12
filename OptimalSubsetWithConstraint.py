@@ -68,7 +68,6 @@ def calculateMinimalValueGroupSolution(
             min(possibleAggregations),
             upperBound
         )
-        print("For bound", upperBound, "the first group solution is:\n", possibleSolutions[0][upperBound])
 
 
 def calculateIntermediateSolution(
