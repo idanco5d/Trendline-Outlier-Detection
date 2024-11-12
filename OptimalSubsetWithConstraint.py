@@ -1,10 +1,11 @@
-from typing import Set, List, Dict, Tuple, Hashable
+from typing import Set, List, Dict, Hashable
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
 from Utils import listOfEmptyDictionaries, getGroupByKey, emptyDataFrame, dataFramesUnion
+
 
 # TODO fix cases with several rows of grouped
 
@@ -16,14 +17,14 @@ def calculateOptimalSubsetWithConstraint(
         aggregationAttributeIndex: int
 ) -> pd.DataFrame:
     groupingValues = iter(groupedRows.groups.keys())
-    minimalValueGroup = getGroupByKey(groupedRows, next(groupingValues))
-    possibleSolutions: List[Dict[int, pd.DataFrame]] = listOfEmptyDictionaries(len(groupedRows.groups.keys()))
+    minimalGroupingValueGroup = getGroupByKey(groupedRows, next(groupingValues))
+    solutions: List[Dict[int, pd.DataFrame]] = listOfEmptyDictionaries(len(groupedRows.groups.keys()))
 
     calculateMinimalValueGroupSolution(
         possibleAggregations,
-        possibleSolutions,
+        solutions,
         aggregationFunction,
-        minimalValueGroup,
+        minimalGroupingValueGroup,
         aggregationAttributeIndex
     )
 
@@ -31,27 +32,25 @@ def calculateOptimalSubsetWithConstraint(
     possibleAggregationsLength = len(sortedPossibleAggregations)
 
     for currentIndex, groupingValue in enumerate(groupingValues, start=1):
-        intermediateSolutions: Dict[Tuple[int, int], pd.DataFrame] = {}
-        intermediateSolutionMaxSize = 0
+        solutionMaxSizePerUpperBound: List[int] = [0 for _ in range(possibleAggregationsLength)]
 
         for i in range(possibleAggregationsLength):
             for j in range(i, possibleAggregationsLength):
                 lowerBound = sortedPossibleAggregations[i]
                 upperBound = sortedPossibleAggregations[j]
 
-                intermediateSolution = calculateIntermediateSolution(aggregationFunction, groupedRows, groupingValue,
-                                                                     aggregationAttributeIndex, lowerBound, upperBound,
-                                                                     possibleSolutions, currentIndex)
+                currentBoundsSolution = calculateCurrentBoundsSolution(aggregationFunction, groupedRows, groupingValue,
+                                                                       aggregationAttributeIndex, lowerBound, upperBound,
+                                                                       solutions, currentIndex)
+                currentBoundsSolutionLength = len(currentBoundsSolution)
 
-                intermediateSolutions[(lowerBound, upperBound)] = intermediateSolution
+                if currentBoundsSolutionLength > solutionMaxSizePerUpperBound[j]:
+                    solutionMaxSizePerUpperBound[j] = currentBoundsSolutionLength
+                    solutions[currentIndex][upperBound] = currentBoundsSolution
 
-                if len(intermediateSolution) > intermediateSolutionMaxSize:
-                    intermediateSolutionMaxSize = len(intermediateSolution)
-                    possibleSolutions[currentIndex][upperBound] = intermediateSolution
-
-    if len(possibleSolutions[-1].values()) == 0:
-        return emptyDataFrame(minimalValueGroup.columns)
-    return max(possibleSolutions[-1].values(), key=lambda df: df.size)
+    if len(solutions[-1].values()) == 0:
+        return emptyDataFrame(minimalGroupingValueGroup.columns)
+    return max(solutions[-1].values(), key=lambda df: df.size)
 
 
 def calculateMinimalValueGroupSolution(
@@ -70,7 +69,7 @@ def calculateMinimalValueGroupSolution(
         )
 
 
-def calculateIntermediateSolution(
+def calculateCurrentBoundsSolution(
         aggregationFunction: AggregationFunction,
         groupedRows: DataFrameGroupBy,
         groupingValue: Hashable,
@@ -96,4 +95,3 @@ def calculateIntermediateSolution(
         )
 
     return intermediateSolution
-
