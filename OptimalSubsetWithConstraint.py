@@ -7,9 +7,6 @@ from AggregationFunctions.AggregationFunction import AggregationFunction
 from Utils import listOfEmptyDictionaries, getGroupByKey, emptyDataFrame, dataFramesUnion
 
 
-# TODO fix cases with several rows of grouped
-
-
 def calculateOptimalSubsetWithConstraint(
         groupedRows: DataFrameGroupBy,
         aggregationFunction: AggregationFunction,
