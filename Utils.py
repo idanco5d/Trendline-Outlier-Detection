@@ -1,18 +1,8 @@
-from typing import List, Dict, Hashable
+from collections import defaultdict
+from typing import List, Hashable, DefaultDict
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
-
-
-def listOfEmptyDictionaries(outputListLength: int) -> List[Dict[int, pd.DataFrame]]:
-    return [{} for _ in range(outputListLength)]
-
-
-def calculateRemovedTuples(originalDataFrame: pd.DataFrame, containedDataFrame: pd.DataFrame) -> pd.DataFrame:
-    mergedDataFrame = originalDataFrame.merge(containedDataFrame, how='outer', indicator=True)
-    differenceDf = mergedDataFrame[mergedDataFrame['_merge'] == 'left_only']
-
-    return differenceDf.drop(columns=['_merge'])
 
 
 def emptyDataFrame(baseDfColumns) -> pd.DataFrame:
@@ -23,6 +13,12 @@ def getAggregatedColumn(dataFrame: pd.DataFrame, aggregationAttributeIndex: int)
     return dataFrame.iloc[:, aggregationAttributeIndex]
 
 
+def listOfEmptyDictionaries(outputListLength: int, columnBase) -> List[DefaultDict[float, pd.DataFrame]]:
+    def emptyData():
+        return emptyDataFrame(columnBase)
+    return [defaultdict(emptyData) for _ in range(outputListLength)]
+
+
 def getGroupByKey(groupedRows: DataFrameGroupBy, key: Hashable) -> pd.DataFrame:
     firstKey = next(iter(groupedRows.groups))
     if isinstance(firstKey, tuple):
@@ -31,7 +27,15 @@ def getGroupByKey(groupedRows: DataFrameGroupBy, key: Hashable) -> pd.DataFrame:
 
 
 def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    combined_df = pd.concat([df1, df2])
-    result_df = combined_df[~combined_df.index.duplicated(keep='first')]
+    if df1.empty:
+        return df2
+    if df2.empty:
+        return df1
+    return pd.concat([df1, df2], ignore_index=False)
 
-    return result_df.sort_index()
+
+def calculateRemovedTuples(originalDataFrame: pd.DataFrame, containedDataFrame: pd.DataFrame) -> pd.DataFrame:
+    mergedDataFrame = originalDataFrame.merge(containedDataFrame, how='outer', indicator=True)
+    differenceDf = mergedDataFrame[mergedDataFrame['_merge'] == 'left_only']
+
+    return differenceDf.drop(columns=['_merge'])

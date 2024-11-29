@@ -1,4 +1,5 @@
-from typing import Set, Dict
+from collections import defaultdict
+from typing import Set, Dict, DefaultDict
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -10,24 +11,25 @@ from Utils import emptyDataFrame, getAggregatedColumn
 class CountDistinctFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
             self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
-    ) -> Set[int]:
-        return set(range(len(dataFrame.iloc[:, aggregationAttributeIndex].unique()) + 1))
+    ) -> DefaultDict[int, Set[float]]:
+        return defaultdict(lambda: set(range(len(dataFrame.iloc[:, aggregationAttributeIndex].unique()) + 1)))
 
-    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
+    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
         return getAggregatedColumn(dataFrame, aggregationAttributeIndex).nunique()
 
     def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,
-            lowerBound: int,
-            upperBound: int
+            lowerBound: float,
+            upperBound: float,
+            possibleAggregations: Set[float],
     ) -> pd.DataFrame:
         result = dataFrame.copy()
 
         while True:
             aggregatedColumn = getAggregatedColumn(result, aggregationAttributeIndex)
-            valuesCount: Dict[int, int] = aggregatedColumn.value_counts().to_dict()
+            valuesCount: Dict[float, int] = aggregatedColumn.value_counts().to_dict()
             countDistinct: int = aggregatedColumn.nunique()
 
             if countDistinct <= upperBound:

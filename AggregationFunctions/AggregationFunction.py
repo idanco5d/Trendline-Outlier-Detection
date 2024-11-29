@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Set
+from typing import Set, DefaultDict
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -10,11 +10,11 @@ class AggregationFunction(ABC):
     @abstractmethod
     def getPossibleSubsetsAggregations(
             self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
-    ) -> Set[int]:
+    ) -> DefaultDict[int, Set[float]]:
         pass
 
     @abstractmethod
-    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
+    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
         pass
 
     @abstractmethod
@@ -22,8 +22,9 @@ class AggregationFunction(ABC):
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,
-            lowerBound: int,
-            upperBound: int
+            lowerBound: float,
+            upperBound: float,
+            possibleAggregations: Set[float],
     ) -> pd.DataFrame:
         pass
 

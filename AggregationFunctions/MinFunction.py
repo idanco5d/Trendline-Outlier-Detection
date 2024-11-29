@@ -1,4 +1,5 @@
-from typing import Set
+from collections import defaultdict
+from typing import Set, DefaultDict
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -10,22 +11,23 @@ from Utils import emptyDataFrame, getAggregatedColumn
 class MinFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
             self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
-    ) -> Set[int]:
-        return set(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
+    ) -> DefaultDict[int, Set[float]]:
+        return defaultdict(lambda: set(getAggregatedColumn(dataFrame, aggregationAttributeIndex)))
 
-    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> int:
+    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
         return min(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
 
     def getAggregationPacking(
             self,
             dataFrame: pd.DataFrame,
             aggregationAttributeIndex: int,
-            lowerBound: int,
-            upperBound: int
+            lowerBound: float,
+            upperBound: float,
+            possibleAggregations: Set[float],
     ) -> pd.DataFrame:
         emptyFrame = emptyDataFrame(dataFrame.columns)
         result = emptyFrame.copy()
-        minValue: int = 2 ** 31
+        minValue = float('inf')
 
         for index, datasetTuple in dataFrame.iterrows():
             currentValue = datasetTuple.iloc[aggregationAttributeIndex]

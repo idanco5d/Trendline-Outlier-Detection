@@ -38,7 +38,7 @@ def parseCsvToDataFrame(filename: str) -> pd.DataFrame:
     with open(filename, mode='r') as file:
         csv_reader = csv.reader(file)
         header = next(csv_reader)
-        dataset = [[int(value) for value in row] for row in csv_reader]
+        dataset = [[float(value) for value in row] for row in csv_reader]
 
     return pd.DataFrame(dataset, columns=header, index=range(len(dataset)))
 

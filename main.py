@@ -8,6 +8,8 @@ if __name__ == '__main__':
     possibleSubsetsAggregations = aggregationFunction.getPossibleSubsetsAggregations(
         data, aggregationIndex, groupedRowsByValue
     )
+    print("The parsed data is: \n", data)
+    print("Input aggregation function: ", aggregationFunction)
 
     solution = calculateOptimalSubsetWithConstraint(
         groupedRowsByValue,
@@ -16,8 +18,5 @@ if __name__ == '__main__':
         aggregationIndex
     )
 
-    print("The parsed data is: \n", data)
-    print("Input aggregation function: ", aggregationFunction)
-    print("Possible subsets aggregations are: ", possibleSubsetsAggregations)
     print("Optimal solution is: \n", solution)
     print("The removed tuples are: \n", calculateRemovedTuples(data, solution))
