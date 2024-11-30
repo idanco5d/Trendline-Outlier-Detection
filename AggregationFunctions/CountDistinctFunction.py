@@ -1,8 +1,6 @@
-from collections import defaultdict
-from typing import Set, Dict, DefaultDict
+from typing import Dict, List
 
 import pandas as pd
-from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
 from Utils import emptyDataFrame, getAggregatedColumn
@@ -10,9 +8,9 @@ from Utils import emptyDataFrame, getAggregatedColumn
 
 class CountDistinctFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
-            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
-    ) -> DefaultDict[int, Set[float]]:
-        return defaultdict(lambda: set(range(len(dataFrame.iloc[:, aggregationAttributeIndex].unique()) + 1)))
+            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
+    ) -> List[float]:
+        return list(range(len(getAggregatedColumn(dataFrame, aggregationAttributeIndex).unique()) + 1))
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
         return getAggregatedColumn(dataFrame, aggregationAttributeIndex).nunique()
@@ -23,7 +21,7 @@ class CountDistinctFunction(AggregationFunction):
             aggregationAttributeIndex: int,
             lowerBound: float,
             upperBound: float,
-            possibleAggregations: Set[float],
+            possibleAggregations: List[float],
     ) -> pd.DataFrame:
         result = dataFrame.copy()
 

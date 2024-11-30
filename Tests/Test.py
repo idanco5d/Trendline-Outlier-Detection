@@ -43,14 +43,11 @@ class TestOptimalSolution(unittest.TestCase):
 
 def getOptimalSolution(inputFileName: str, function: AggregationFunction) -> pd.DataFrame:
     data = parseCsvToDataFrame(inputFileName)
-    groupedRowsByValue = groupFrameByAttributes(data, ['grouping_1', 'grouping_2'])
-    aggregationIndex = 3
-    possibleSubsetsAggregations = function.getPossibleSubsetsAggregations(data, aggregationIndex, groupedRowsByValue)
+    groupedRowsByValue = groupFrameByAttributes(data, ['grouping_1', 'grouping_2'], "aggregator")
     return calculateOptimalSubsetWithConstraint(
         groupedRowsByValue,
         function,
-        possibleSubsetsAggregations,
-        aggregationIndex
+        3
     )
 
 

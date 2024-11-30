@@ -1,18 +1,16 @@
-from collections import defaultdict
-from typing import Set, DefaultDict
+from typing import List
 
 import pandas as pd
-from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
-from Utils import emptyDataFrame, getAggregatedColumn
+from Utils import emptyDataFrame, getAggregatedColumn, getListOfColumnValues
 
 
 class MaxFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
-            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
-    ) -> DefaultDict[int, Set[float]]:
-        return defaultdict(lambda: set(getAggregatedColumn(dataFrame, aggregationAttributeIndex)))
+            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
+    ) -> List[float]:
+        return getListOfColumnValues(dataFrame, aggregationAttributeIndex)
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
         return max(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
@@ -23,7 +21,7 @@ class MaxFunction(AggregationFunction):
             aggregationAttributeIndex: int,
             lowerBound: float,
             upperBound: float,
-            possibleAggregations: Set[float],
+            possibleAggregations: List[float],
     ) -> pd.DataFrame:
         emptyFrame = emptyDataFrame(dataFrame.columns)
 

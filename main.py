@@ -5,16 +5,12 @@ from Utils import calculateRemovedTuples
 if __name__ == '__main__':
     aggregationFunction, data, aggregationIndex, groupedRowsByValue = parseInput()
 
-    possibleSubsetsAggregations = aggregationFunction.getPossibleSubsetsAggregations(
-        data, aggregationIndex, groupedRowsByValue
-    )
     print("The parsed data is: \n", data)
     print("Input aggregation function: ", aggregationFunction)
 
     solution = calculateOptimalSubsetWithConstraint(
         groupedRowsByValue,
         aggregationFunction,
-        possibleSubsetsAggregations,
         aggregationIndex
     )
 

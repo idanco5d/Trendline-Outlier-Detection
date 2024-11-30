@@ -1,27 +1,19 @@
 import math
 from collections import defaultdict
-from typing import Set, Tuple, DefaultDict
+from typing import Tuple, DefaultDict, List
 
 import pandas as pd
-from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
-from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion, getGroupByKey
+from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion
 
 
 class SumFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
-            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int, groupedRows: DataFrameGroupBy
-    ) -> DefaultDict[int, Set[float]]:
-        values = iter(groupedRows.groups.keys())
-        possibleAggregations: DefaultDict[int, Set[float]] = defaultdict(set)
-
-        for index, value in enumerate(values):
-            currentGroupData = getGroupByKey(groupedRows, value)
-            aggregatedColumn = getAggregatedColumn(currentGroupData, aggregationAttributeIndex)
-            possibleAggregations[index] = set(range(math.ceil(max(aggregatedColumn)) * len(aggregatedColumn) + 1))
-
-        return possibleAggregations
+            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
+    ) -> List[float]:
+        aggregatedColumn = getAggregatedColumn(dataFrame, aggregationAttributeIndex)
+        return list(range(math.ceil(max(aggregatedColumn)) * len(aggregatedColumn) + 1))
 
     def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
         return sum(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
@@ -32,7 +24,7 @@ class SumFunction(AggregationFunction):
             aggregationAttributeIndex: int,
             lowerBound: float,
             upperBound: float,
-            possibleAggregations: Set[float],
+            possibleAggregations: List[float],
     ) -> pd.DataFrame:
         subsetsSizes: DefaultDict[Tuple[int, float], float] = defaultdict(lambda: float('-inf'))
         aggregationPackings: DefaultDict[Tuple[int, float], pd.DataFrame] = defaultdict(

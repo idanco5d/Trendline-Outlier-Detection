@@ -1,4 +1,4 @@
-from typing import Set, List, Dict, DefaultDict
+from typing import List, Dict
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -10,7 +10,6 @@ from Utils import listOfEmptyDictionaries, getGroupByKey, emptyDataFrame, dataFr
 def calculateOptimalSubsetWithConstraint(
         groupedRows: DataFrameGroupBy,
         aggregationFunction: AggregationFunction,
-        possibleAggregations: DefaultDict[int, Set[float]],
         aggregationAttributeIndex: int
 ) -> pd.DataFrame:
     groupingValues = iter(groupedRows.groups.keys())
@@ -20,7 +19,6 @@ def calculateOptimalSubsetWithConstraint(
     )
 
     calculateMinimalValueGroupSolution(
-        possibleAggregations[0],
         solutions,
         aggregationFunction,
         minimalGroupingValueGroup,
@@ -29,15 +27,17 @@ def calculateOptimalSubsetWithConstraint(
 
     for currentIndex, groupingValue in enumerate(groupingValues, start=1):
         currentValueGroup = getGroupByKey(groupedRows, groupingValue)
-        currentPossibleAggregations = possibleAggregations[currentIndex]
-        sortedPossibleAggregations = sorted(currentPossibleAggregations)
-        possibleAggregationsLength = len(sortedPossibleAggregations)
+        currentPossibleAggregations = aggregationFunction.getPossibleSubsetsAggregations(
+            currentValueGroup,
+            aggregationAttributeIndex
+        )
+        possibleAggregationsLength = len(currentPossibleAggregations)
         solutionMaxSizePerUpperBound: List[int] = [0 for _ in range(possibleAggregationsLength)]
 
         for i in range(possibleAggregationsLength):
-            lowerBound = sortedPossibleAggregations[i]
+            lowerBound = currentPossibleAggregations[i]
             for j in range(i, possibleAggregationsLength):
-                upperBound = sortedPossibleAggregations[j]
+                upperBound = currentPossibleAggregations[j]
 
                 currentBoundsSolution = calculateCurrentBoundsSolution(aggregationFunction, currentValueGroup,
                                                                        aggregationAttributeIndex, lowerBound,
@@ -56,13 +56,16 @@ def calculateOptimalSubsetWithConstraint(
 
 
 def calculateMinimalValueGroupSolution(
-        possibleAggregations: Set[float],
         possibleSolutions: List[Dict[float, pd.DataFrame]],
         aggregationFunction: AggregationFunction,
         minimalValueGroup: pd.DataFrame,
         aggregationAttributeIndex: int
 ):
+    possibleAggregations = aggregationFunction.getPossibleSubsetsAggregations(
+        minimalValueGroup, aggregationAttributeIndex
+    )
     minPossibleAggregation = min(possibleAggregations)
+
     for upperBound in possibleAggregations:
         possibleSolutions[0][upperBound] = aggregationFunction.getAggregationPacking(
             minimalValueGroup,
@@ -79,7 +82,7 @@ def calculateCurrentBoundsSolution(
         aggregationAttributeIndex: int,
         lowerBound: float,
         upperBound: float,
-        possibleAggregations: Set[float],
+        possibleAggregations: List[float],
         possibleSolutions: List[Dict[float, pd.DataFrame]],
         currentIndex: int,
 ) -> pd.DataFrame:
