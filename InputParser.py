@@ -21,7 +21,7 @@ def parseInput() -> (AggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
     return (getAggregationFunctionFromInput(args.aggregationFunction),
             data,
             getAggregationAttributeIndexByName(data, args.aggregationAttributeName),
-            groupFrameByAttributes(data, args.groupingAttributesNames))
+            groupFrameByAttributes(data, args.groupingAttributesNames, args.aggregationAttributeName))
 
 
 def getInputArguments() -> argparse.Namespace:
@@ -70,7 +70,9 @@ def getAggregationAttributeIndexByName(data: pd.DataFrame, aggregationAttributeN
     return aggregationAttributeIndex
 
 
-def groupFrameByAttributes(data: pd.DataFrame, groupingAttributesNames: List[str]) -> DataFrameGroupBy:
+def groupFrameByAttributes(data: pd.DataFrame, groupingAttributesNames: List[str],
+                           aggregationAttributeName: str) -> DataFrameGroupBy:
+    data = data.sort_values(by=groupingAttributesNames + [aggregationAttributeName])
     try:
         groupedRowsByValue = data.groupby(groupingAttributesNames)
     except KeyError:
