@@ -31,39 +31,98 @@ class SumFunction(AggregationFunction):
             lambda: emptyDataFrame(dataFrame.columns)
         )
 
-        firstTuple = dataFrame.iloc[[0]]
-        for possibleAggregation in possibleAggregations:
-            if firstTuple.iloc[0, aggregationAttributeIndex] == possibleAggregation:
-                subsetsSizes[(0, possibleAggregation)] = 1
-                aggregationPackings[(0, possibleAggregation)] = firstTuple
+        setFirstAggregationPackingAndSubsetsSizes(
+            aggregationAttributeIndex,
+            aggregationPackings,
+            dataFrame,
+            possibleAggregations,
+            subsetsSizes
+        )
 
         for possibleAggregation in possibleAggregations:
             for j in range(1, len(dataFrame)):
-                currentValue = dataFrame.iloc[j, aggregationAttributeIndex]
-                addCurrentTupleIndicator = (
-                        subsetsSizes[(j - 1, possibleAggregation - currentValue)] + 1
+                setCurrentAggregationPackingAndSubsetsSizes(
+                    aggregationAttributeIndex,
+                    aggregationPackings,
+                    dataFrame,
+                    j,
+                    possibleAggregation,
+                    subsetsSizes
                 )
-                skipCurrentTupleIndicator = subsetsSizes[(j - 1, possibleAggregation)]
-                if addCurrentTupleIndicator > skipCurrentTupleIndicator:
-                    subsetsSizes[(j, possibleAggregation)] = addCurrentTupleIndicator
-                    aggregationPackings[(j, possibleAggregation)] = dataFramesUnion(
-                        aggregationPackings[(j - 1, possibleAggregation - currentValue)], dataFrame.iloc[[j]]
-                    )
-                else:
-                    subsetsSizes[(j, possibleAggregation)] = skipCurrentTupleIndicator
-                    aggregationPackings[(j, possibleAggregation)] = aggregationPackings[(j - 1, possibleAggregation)]
 
-        maxAggregation = float('-inf')
-        result: pd.DataFrame = emptyDataFrame(dataFrame.columns)
-        for possibleAggregation in possibleAggregations:
-
-            if lowerBound <= possibleAggregation <= upperBound:
-                currentSubsetSize = subsetsSizes[(len(dataFrame) - 1, possibleAggregation)]
-                if currentSubsetSize > maxAggregation:
-                    maxAggregation = currentSubsetSize
-                    result = aggregationPackings[(len(dataFrame) - 1, possibleAggregation)]
-
-        return result
+        return calculateOptimalPacking(
+            aggregationPackings,
+            dataFrame,
+            lowerBound,
+            possibleAggregations,
+            subsetsSizes,
+            upperBound
+        )
 
     def __str__(self):
         return "SUM"
+
+
+def setFirstAggregationPackingAndSubsetsSizes(
+        aggregationAttributeIndex: int,
+        aggregationPackings: DefaultDict[Tuple[int, float], pd.DataFrame],
+        dataFrame: pd.DataFrame,
+        possibleAggregations: List[float],
+        subsetsSizes: DefaultDict[Tuple[int, float], float]
+):
+    firstRow = dataFrame.iloc[[0]]
+    for possibleAggregation in possibleAggregations:
+        if firstRow.iloc[0, aggregationAttributeIndex] == possibleAggregation:
+            subsetsSizes[(0, possibleAggregation)] = 1
+            aggregationPackings[(0, possibleAggregation)] = firstRow
+
+
+def setCurrentAggregationPackingAndSubsetsSizes(
+        aggregationAttributeIndex: int,
+        aggregationPackings: DefaultDict[Tuple[int, float], pd.DataFrame],
+        dataFrame: pd.DataFrame,
+        j: int,
+        possibleAggregation: float,
+        subsetsSizes: DefaultDict[Tuple[int, float], float]
+):
+    currentValue = dataFrame.iloc[j, aggregationAttributeIndex]
+    addIndicatorTuple = (j - 1, possibleAggregation - currentValue)
+    skipIndicatorTuple = (j - 1, possibleAggregation)
+    currentIterationTuple = (j, possibleAggregation)
+
+    addCurrentRowIndicator = (
+            subsetsSizes[addIndicatorTuple] + 1
+    )
+    skipCurrentRowIndicator = subsetsSizes[skipIndicatorTuple]
+
+    if addCurrentRowIndicator > skipCurrentRowIndicator:
+        subsetsSizes[currentIterationTuple] = addCurrentRowIndicator
+        aggregationPackings[currentIterationTuple] = dataFramesUnion(
+            aggregationPackings[addIndicatorTuple], dataFrame.iloc[[j]]
+        )
+    else:
+        subsetsSizes[currentIterationTuple] = skipCurrentRowIndicator
+        aggregationPackings[currentIterationTuple] = aggregationPackings[skipIndicatorTuple]
+
+
+def calculateOptimalPacking(
+        aggregationPackings: DefaultDict[Tuple[int, float], pd.DataFrame],
+        dataFrame: pd.DataFrame,
+        lowerBound: float,
+        possibleAggregations: List[float],
+        subsetsSizes: DefaultDict[Tuple[int, float], float],
+        upperBound: float
+):
+    maxAggregation = float('-inf')
+    result: pd.DataFrame = emptyDataFrame(dataFrame.columns)
+
+    for possibleAggregation in possibleAggregations:
+        if lowerBound <= possibleAggregation <= upperBound:
+            currentSubsetTuple = (len(dataFrame) - 1, possibleAggregation)
+            currentSubsetSize = subsetsSizes[currentSubsetTuple]
+
+            if currentSubsetSize > maxAggregation:
+                maxAggregation = currentSubsetSize
+                result = aggregationPackings[currentSubsetTuple]
+
+    return result
