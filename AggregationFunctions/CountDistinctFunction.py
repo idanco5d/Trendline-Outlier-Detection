@@ -33,14 +33,14 @@ class CountDistinctFunction(AggregationFunction):
             if countDistinct <= upperBound:
                 break
 
-            values = valuesCount.values()
-            if len(values) == 0:
+            counts = valuesCount.values()
+            if len(counts) == 0:
                 break
 
-            minCount = min(values)
+            minCount = min(counts)
             leastCommonValues = [val for val, count in valuesCount.items() if count == minCount]
 
-            result = result[~aggregatedColumn.isin(leastCommonValues)]
+            result = result[~(aggregatedColumn == leastCommonValues[0])]
 
         if countDistinct < lowerBound:
             return emptyDataFrame(dataFrame.columns)

@@ -1,13 +1,26 @@
 from collections import defaultdict
-from typing import Set, Dict, Tuple, DefaultDict, List
+from typing import Tuple, DefaultDict, List
 
 import pandas as pd
-from pandas.core.groupby import DataFrameGroupBy
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
 from AggregationFunctions.CountFunction import CountFunction
 from AggregationFunctions.SumFunction import SumFunction
 from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion
+
+
+def setFirstAggregationPackingAndSubsetsExistence(
+        aggregationAttributeIndex: int,
+        aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
+        dataFrame: pd.DataFrame,
+        subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float]
+):
+    for j in range(len(dataFrame)):
+        subsetsExistenceWithSize[(j, 0, 0)] = 0
+
+    firstRow = dataFrame.iloc[[0]]
+    subsetsExistenceWithSize[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = 1
+    aggregationPackings[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = firstRow
 
 
 class AverageFunction(AggregationFunction):
@@ -53,18 +66,18 @@ class AverageFunction(AggregationFunction):
             lambda: emptyDataFrame(dataFrame.columns)
         )
 
-        self.setFirstAggregationPackingAndSubsetsExistence(
+        setFirstAggregationPackingAndSubsetsExistence(
             aggregationAttributeIndex,
             aggregationPackings,
             dataFrame,
             subsetsExistenceWithSize
         )
 
-        for sumAggregation in self.sumPossibleAggregations:
-            for countAggregation in self.countPossibleAggregations:
-                if countAggregation == 0:
-                    continue
-                for j in range(1, len(dataFrame)):
+        for j in range(1, len(dataFrame)):
+            for sumAggregation in self.sumPossibleAggregations:
+                for countAggregation in self.countPossibleAggregations:
+                    if countAggregation == 0:
+                        continue
                     setCurrentAggregationPackingsAndSubsetsExistence(
                         aggregationAttributeIndex,
                         aggregationPackings,
@@ -83,20 +96,6 @@ class AverageFunction(AggregationFunction):
             upperBound
         )
 
-    def setFirstAggregationPackingAndSubsetsExistence(
-            self,
-            aggregationAttributeIndex: int,
-            aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
-            dataFrame: pd.DataFrame,
-            subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float]
-    ):
-        firstRow = dataFrame.iloc[[0]]
-
-        for sumAggregation in self.sumPossibleAggregations:
-            if firstRow.iloc[0, aggregationAttributeIndex] == sumAggregation:
-                subsetsExistenceWithSize[(0, sumAggregation, 0)] = 1
-                aggregationPackings[(0, sumAggregation, 0)] = firstRow
-
     def calculateOptimalPacking(
             self,
             aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
@@ -105,19 +104,19 @@ class AverageFunction(AggregationFunction):
             subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float],
             upperBound: float
     ):
-        maxAggregation = float('-inf')
+        maxSubsetSize = float('-inf')
         result: pd.DataFrame = emptyDataFrame(dataFrame.columns)
 
         for sumAggregation in self.sumPossibleAggregations:
             for countAggregation in self.countPossibleAggregations:
                 if countAggregation == 0:
                     continue
-                if lowerBound <= sumAggregation / countAggregation <= upperBound:
+                if lowerBound <= (sumAggregation / countAggregation) <= upperBound:
                     currentSubsetTuple = (len(dataFrame) - 1, sumAggregation, countAggregation)
                     currentSubsetSize = subsetsExistenceWithSize[currentSubsetTuple]
 
-                    if currentSubsetSize > maxAggregation:
-                        maxAggregation = currentSubsetSize
+                    if currentSubsetSize > maxSubsetSize:
+                        maxSubsetSize = currentSubsetSize
                         result = aggregationPackings[currentSubsetTuple]
 
         return result
@@ -138,9 +137,8 @@ def setCurrentAggregationPackingsAndSubsetsExistence(
     currentIterationTuple = (j, sumAggregation, countAggregation)
     skipIndicatorTuple = (j - 1, sumAggregation, countAggregation)
 
-    if countAggregation > j:
+    if countAggregation > j + 1:
         subsetsExistenceWithSize[currentIterationTuple] = float('-inf')
-        aggregationPackings[currentIterationTuple] = aggregationPackings[skipIndicatorTuple]
     else:
         currentValue = dataFrame.iloc[j, aggregationAttributeIndex]
         addIndicatorTuple = (j - 1, sumAggregation - currentValue, countAggregation - 1)
@@ -163,4 +161,3 @@ def setCurrentAggregationPackingsAndSubsetsExistence(
             aggregationPackings[currentIterationTuple] = aggregationPackings[
                 skipIndicatorTuple
             ]
-
