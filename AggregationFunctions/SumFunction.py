@@ -9,6 +9,12 @@ from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion
 
 
 class SumFunction(AggregationFunction):
+
+    def __init__(self):
+        super().__init__()
+        self.subsetsSizes: DefaultDict[Tuple[int, float], float | None] = defaultdict(lambda: None)
+        self.aggregationPackings: DefaultDict[Tuple[int, float], pd.DataFrame | None] = defaultdict(lambda: None)
+
     def getPossibleSubsetsAggregations(
             self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
     ) -> List[float]:
@@ -41,13 +47,21 @@ class SumFunction(AggregationFunction):
 
         for possibleAggregation in possibleAggregations:
             for j in range(1, len(dataFrame)):
+                currentIterationTuple = (j, possibleAggregation)
+                if (self.subsetsSizes[currentIterationTuple] is not None
+                        and self.aggregationPackings[currentIterationTuple] is not None):
+                    subsetsSizes[currentIterationTuple] = self.subsetsSizes[currentIterationTuple]
+                    aggregationPackings[currentIterationTuple] = self.aggregationPackings[currentIterationTuple]
+                    continue
+
                 setCurrentAggregationPackingAndSubsetsSizes(
                     aggregationAttributeIndex,
                     aggregationPackings,
                     dataFrame,
                     j,
                     possibleAggregation,
-                    subsetsSizes
+                    subsetsSizes,
+                    currentIterationTuple
                 )
 
         return calculateOptimalPacking(
@@ -83,12 +97,12 @@ def setCurrentAggregationPackingAndSubsetsSizes(
         dataFrame: pd.DataFrame,
         j: int,
         possibleAggregation: float,
-        subsetsSizes: DefaultDict[Tuple[int, float], float]
+        subsetsSizes: DefaultDict[Tuple[int, float], float],
+        currentIterationTuple: Tuple[int, float]
 ):
     currentValue = dataFrame.iloc[j, aggregationAttributeIndex]
     addIndicatorTuple = (j - 1, possibleAggregation - currentValue)
     skipIndicatorTuple = (j - 1, possibleAggregation)
-    currentIterationTuple = (j, possibleAggregation)
 
     addCurrentRowIndicator = (
             subsetsSizes[addIndicatorTuple] + 1
