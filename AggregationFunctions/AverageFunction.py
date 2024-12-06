@@ -9,20 +9,6 @@ from AggregationFunctions.SumFunction import SumFunction
 from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion
 
 
-def setFirstAggregationPackingAndSubsetsExistence(
-        aggregationAttributeIndex: int,
-        aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
-        dataFrame: pd.DataFrame,
-        subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float]
-):
-    for j in range(len(dataFrame)):
-        subsetsExistenceWithSize[(j, 0, 0)] = 0
-
-    firstRow = dataFrame.iloc[[0]]
-    subsetsExistenceWithSize[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = 1
-    aggregationPackings[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = firstRow
-
-
 class AverageFunction(AggregationFunction):
     def __init__(self):
         super().__init__()
@@ -123,6 +109,20 @@ class AverageFunction(AggregationFunction):
 
     def __str__(self):
         return "AVG"
+
+
+def setFirstAggregationPackingAndSubsetsExistence(
+        aggregationAttributeIndex: int,
+        aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
+        dataFrame: pd.DataFrame,
+        subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float]
+):
+    for j in range(len(dataFrame)):
+        subsetsExistenceWithSize[(j, 0, 0)] = 0
+
+    firstRow = dataFrame.iloc[[0]]
+    subsetsExistenceWithSize[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = 1
+    aggregationPackings[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = firstRow
 
 
 def setCurrentAggregationPackingsAndSubsetsExistence(

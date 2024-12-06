@@ -4,6 +4,7 @@ import pandas as pd
 from pandas._testing import assert_frame_equal
 
 from AggregationFunctions.AggregationFunction import AggregationFunction
+from AggregationFunctions.AverageFunction import AverageFunction
 from AggregationFunctions.CountDistinctFunction import CountDistinctFunction
 from AggregationFunctions.CountFunction import CountFunction
 from AggregationFunctions.MaxFunction import MaxFunction
@@ -29,7 +30,6 @@ class TestOptimalSolution(unittest.TestCase):
         expectedSolution = pd.read_csv("Count/count_expected_result.csv")
         assertDataFramesEqual(actualSolution, expectedSolution)
 
-    # TODO find out why count distinct is not returning the proper result
     def testCountDistinct(self):
         actualSolution = getOptimalSolution("Count_Distinct/count_distinct_initial_file.csv", CountDistinctFunction())
         expectedSolution = pd.read_csv("Count_Distinct/count_distinct_expected_result.csv")
@@ -38,6 +38,11 @@ class TestOptimalSolution(unittest.TestCase):
     def testSum(self):
         actualSolution = getOptimalSolution("Sum/sum_initial_file.csv", SumFunction())
         expectedSolution = pd.read_csv("Sum/sum_expected_result.csv")
+        assertDataFramesEqual(actualSolution, expectedSolution)
+
+    def testAverage(self):
+        actualSolution = getOptimalSolution("Average/average_initial_file.csv", AverageFunction())
+        expectedSolution = pd.read_csv("Average/average_expected_result.csv")
         assertDataFramesEqual(actualSolution, expectedSolution)
 
 

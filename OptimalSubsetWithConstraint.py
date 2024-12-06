@@ -56,7 +56,7 @@ def calculateOptimalSubsetWithConstraint(
 
 
 def calculateMinimalValueGroupSolution(
-        possibleSolutions: List[Dict[float, pd.DataFrame]],
+        solutions: List[Dict[float, pd.DataFrame]],
         aggregationFunction: AggregationFunction,
         minimalValueGroup: pd.DataFrame,
         aggregationAttributeIndex: int
@@ -67,7 +67,7 @@ def calculateMinimalValueGroupSolution(
     minPossibleAggregation = min(possibleAggregations)
 
     for upperBound in possibleAggregations:
-        possibleSolutions[0][upperBound] = aggregationFunction.getAggregationPacking(
+        solutions[0][upperBound] = aggregationFunction.getAggregationPacking(
             minimalValueGroup,
             aggregationAttributeIndex,
             minPossibleAggregation,
@@ -83,7 +83,7 @@ def calculateCurrentBoundsSolution(
         lowerBound: float,
         upperBound: float,
         possibleAggregations: List[float],
-        possibleSolutions: List[Dict[float, pd.DataFrame]],
+        solutions: List[Dict[float, pd.DataFrame]],
         currentIndex: int,
 ) -> pd.DataFrame:
     aggregationPacking = aggregationFunction.getAggregationPacking(
@@ -95,11 +95,11 @@ def calculateCurrentBoundsSolution(
     )
 
     if len(aggregationPacking) == 0:
-        currentBoundsSolution = possibleSolutions[currentIndex - 1][lowerBound]
+        currentBoundsSolution = solutions[currentIndex - 1][lowerBound]
     else:
         aggregation = aggregationFunction.aggregate(aggregationPacking, aggregationAttributeIndex)
         currentBoundsSolution = dataFramesUnion(
-            possibleSolutions[currentIndex - 1][aggregation], aggregationPacking
+            solutions[currentIndex - 1][aggregation], aggregationPacking
         )
 
     return currentBoundsSolution

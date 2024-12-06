@@ -5,6 +5,8 @@ from typing import List, Hashable, DefaultDict
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
+from BinarySearchDefaultDict import BinarySearchDefaultDict
+
 
 def getAggregatedColumn(dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> pd.Series:
     return dataFrame.iloc[:, aggregationAttributeIndex]
@@ -19,32 +21,7 @@ def emptyDataFrame(baseDfColumns) -> pd.DataFrame:
 
 
 def listOfEmptyDictionaries(outputListLength: int, columnBase) -> List[DefaultDict[float, pd.DataFrame]]:
-    return [createBinarySearchDefaultDict(columnBase) for _ in range(outputListLength)]
-
-
-def createBinarySearchDefaultDict(column_base):
-    class BinarySearchDefaultDict(defaultdict):
-        def __init__(self, *args, **kwargs):
-            super().__init__(lambda: pd.DataFrame(columns=column_base), *args, **kwargs)
-            self._sorted_keys = []
-
-        def __setitem__(self, key, value):
-            super().__setitem__(key, value)
-            # Maintain sorted keys for binary search
-            idx = bisect(self._sorted_keys, key)
-            self._sorted_keys.insert(idx, key)
-
-        def __missing__(self, key):
-            # Binary search for the largest key less than or equal to the requested key
-            idx = bisect(self._sorted_keys, key) - 1
-
-            if idx >= 0:
-                return self[self._sorted_keys[idx]]
-
-            # Default empty DataFrame
-            return self.default_factory()
-
-    return BinarySearchDefaultDict()
+    return [BinarySearchDefaultDict(columnBase) for _ in range(outputListLength)]
 
 
 def getGroupByKey(groupedRows: DataFrameGroupBy, key: Hashable) -> pd.DataFrame:
