@@ -23,8 +23,7 @@ class MinFunction(AggregationFunction):
             upperBound: float,
             possibleAggregations: List[float],
     ) -> pd.DataFrame:
-        emptyFrame = emptyDataFrame(dataFrame.columns)
-        result = emptyFrame.copy()
+        result = emptyDataFrame(dataFrame.columns)
         minValue = float('inf')
 
         for index, datasetTuple in dataFrame.iterrows():
@@ -35,7 +34,7 @@ class MinFunction(AggregationFunction):
                 minValue = currentValue
 
         if minValue > upperBound:
-            return emptyFrame
+            return emptyDataFrame(dataFrame.columns)
         return result
 
     def __str__(self):

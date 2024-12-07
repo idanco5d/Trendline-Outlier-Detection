@@ -23,9 +23,7 @@ class MaxFunction(AggregationFunction):
             upperBound: float,
             possibleAggregations: List[float],
     ) -> pd.DataFrame:
-        emptyFrame = emptyDataFrame(dataFrame.columns)
-
-        result = emptyFrame.copy()
+        result = emptyDataFrame(dataFrame.columns)
         maxValue = float('-inf')
 
         for index, datasetTuple in dataFrame.iterrows():
@@ -36,7 +34,7 @@ class MaxFunction(AggregationFunction):
                 maxValue = currentValue
 
         if maxValue < lowerBound:
-            return emptyFrame
+            return emptyDataFrame(dataFrame.columns)
         return result
 
     def __str__(self):
