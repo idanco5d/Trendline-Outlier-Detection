@@ -18,6 +18,9 @@ class SumFunction(AggregationFunction):
     def getPossibleSubsetsAggregations(
             self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
     ) -> List[float]:
+        self.subsetsSizes = defaultdict(lambda: None)
+        self.aggregationPackings = defaultdict(lambda: None)
+
         aggregatedColumn = getAggregatedColumn(dataFrame, aggregationAttributeIndex)
         return list(range(math.ceil(max(aggregatedColumn)) * len(aggregatedColumn) + 1))
 

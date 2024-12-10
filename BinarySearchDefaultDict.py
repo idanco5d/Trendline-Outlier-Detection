@@ -3,6 +3,8 @@ from collections import defaultdict
 
 import pandas as pd
 
+# TODO try and see if this can be sorted once at the end
+
 
 class BinarySearchDefaultDict(defaultdict):
     def __init__(self, columnBase, *args, **kwargs):
