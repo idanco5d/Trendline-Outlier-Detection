@@ -13,7 +13,7 @@ class MaxFunction(AggregationFunction):
         return get_list_of_column_values(data_frame, aggregation_attribute_index)
 
     def aggregate(self, data_frame: pd.DataFrame, aggregation_attribute_index: int) -> float:
-        return max(get_aggregated_column(data_frame, aggregation_attribute_index))
+        return float(get_aggregated_column(data_frame, aggregation_attribute_index).max())
 
     def get_aggregation_packing(
             self,
@@ -23,19 +23,13 @@ class MaxFunction(AggregationFunction):
             upper_bound: float,
             possible_aggregations: List[float],
     ) -> pd.DataFrame:
-        result = empty_data_frame(data_frame.columns)
-        max_value = float('-inf')
+        filtered_df = data_frame.loc[data_frame.iloc[:, aggregation_attribute_index].le(upper_bound)]
+        max_value = filtered_df.iloc[:, aggregation_attribute_index].max()
 
-        for index, dataset_tuple in data_frame.iterrows():
-            current_value = dataset_tuple.iloc[aggregation_attribute_index]
-            if current_value <= upper_bound:
-                result.loc[index] = dataset_tuple
-            if current_value > max_value:
-                max_value = current_value
-
-        if max_value < lower_bound:
+        if lower_bound > max_value:
             return empty_data_frame(data_frame.columns)
-        return result
+
+        return filtered_df
 
     def __str__(self):
         return "MAX"
