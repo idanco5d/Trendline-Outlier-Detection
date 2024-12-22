@@ -1,5 +1,4 @@
 import argparse
-import csv
 from typing import List
 
 import pandas as pd
@@ -35,12 +34,7 @@ def get_input_arguments() -> argparse.Namespace:
 
 
 def parse_csv_to_data_frame(filename: str) -> pd.DataFrame:
-    with open(filename, mode='r') as file:
-        csv_reader = csv.reader(file)
-        header = next(csv_reader)
-        dataset = [[float(value) for value in row] for row in csv_reader]
-
-    return pd.DataFrame(dataset, columns=header, index=range(len(dataset)))
+    return pd.read_csv(filename)
 
 
 def get_aggregation_function_from_input(function_name: str) -> AggregationFunction:
