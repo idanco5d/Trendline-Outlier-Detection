@@ -5,13 +5,13 @@ from typing import List
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from AggregationFunctions.AggregationFunction import AggregationFunction
-from AggregationFunctions.AverageFunction import AverageFunction
-from AggregationFunctions.CountDistinctFunction import CountDistinctFunction
-from AggregationFunctions.CountFunction import CountFunction
-from AggregationFunctions.MaxFunction import MaxFunction
-from AggregationFunctions.MinFunction import MinFunction
-from AggregationFunctions.SumFunction import SumFunction
+from aggregation_functions.aggregation_function import AggregationFunction
+from aggregation_functions.average_function import AverageFunction
+from aggregation_functions.count_distinct_function import CountDistinctFunction
+from aggregation_functions.count_function import CountFunction
+from aggregation_functions.max_function import MaxFunction
+from aggregation_functions.min_function import MinFunction
+from aggregation_functions.sum_function import SumFunction
 
 
 def parseInput() -> (AggregationFunction, pd.DataFrame, int, DataFrameGroupBy):

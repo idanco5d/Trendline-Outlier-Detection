@@ -3,9 +3,9 @@ from typing import Tuple, DefaultDict, List
 
 import pandas as pd
 
-from AggregationFunctions.AggregationFunction import AggregationFunction
-from AggregationFunctions.CountFunction import CountFunction
-from AggregationFunctions.SumFunction import SumFunction
+from aggregation_functions.aggregation_function import AggregationFunction
+from aggregation_functions.count_function import CountFunction
+from aggregation_functions.sum_function import SumFunction
 from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion
 
 

@@ -3,7 +3,7 @@ from typing import List, Dict
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from AggregationFunctions.AggregationFunction import AggregationFunction
+from aggregation_functions.aggregation_function import AggregationFunction
 from Utils import listOfEmptyDictionaries, getGroupByKey, emptyDataFrame, dataFramesUnion
 
 

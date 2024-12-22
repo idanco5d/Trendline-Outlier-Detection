@@ -2,7 +2,7 @@ from typing import List
 
 import pandas as pd
 
-from AggregationFunctions.AggregationFunction import AggregationFunction
+from aggregation_functions.aggregation_function import AggregationFunction
 from Utils import emptyDataFrame, getAggregatedColumn
 
 

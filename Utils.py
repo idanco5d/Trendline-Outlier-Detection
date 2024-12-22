@@ -3,7 +3,7 @@ from typing import List, Hashable, DefaultDict
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from BinarySearchDefaultDict import BinarySearchDefaultDict
+from binary_search_default_dict import BinarySearchDefaultDict
 
 
 def getAggregatedColumn(dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> pd.Series:

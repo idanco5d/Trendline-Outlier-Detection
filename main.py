@@ -1,5 +1,5 @@
-from InputParser import parseInput
-from OptimalSubsetWithConstraint import calculateOptimalSubsetWithConstraint
+from input_parser import parseInput
+from optimal_subset_with_constraint import calculateOptimalSubsetWithConstraint
 from Utils import calculateRemovedTuples
 
 if __name__ == '__main__':
