@@ -9,23 +9,23 @@ class AggregationFunction(ABC):
     # even though this returns a regular list and not a sorted one,
     # it should always be sorted since the groups are ordered in advanced in InputParser
     @abstractmethod
-    def getPossibleSubsetsAggregations(
-            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
+    def get_possible_subsets_aggregations(
+            self, data_frame: pd.DataFrame, aggregation_attribute_index: int
     ) -> List[float]:
         pass
 
     @abstractmethod
-    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
+    def aggregate(self, data_frame: pd.DataFrame, aggregation_attribute_index: int) -> float:
         pass
 
     @abstractmethod
-    def getAggregationPacking(
+    def get_aggregation_packing(
             self,
-            dataFrame: pd.DataFrame,
-            aggregationAttributeIndex: int,
-            lowerBound: float,
-            upperBound: float,
-            possibleAggregations: List[float],
+            data_frame: pd.DataFrame,
+            aggregation_attribute_index: int,
+            lower_bound: float,
+            upper_bound: float,
+            possible_aggregations: List[float],
     ) -> pd.DataFrame:
         pass
 

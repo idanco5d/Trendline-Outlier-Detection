@@ -3,38 +3,38 @@ from typing import List
 import pandas as pd
 
 from aggregation_functions.aggregation_function import AggregationFunction
-from Utils import emptyDataFrame, getAggregatedColumn, getListOfColumnValues
+from Utils import empty_data_frame, get_aggregated_column, get_list_of_column_values
 
 
 class MinFunction(AggregationFunction):
-    def getPossibleSubsetsAggregations(
-            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
+    def get_possible_subsets_aggregations(
+            self, data_frame: pd.DataFrame, aggregation_attribute_index: int
     ) -> List[float]:
-        return getListOfColumnValues(dataFrame, aggregationAttributeIndex)
+        return get_list_of_column_values(data_frame, aggregation_attribute_index)
 
-    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
-        return min(getAggregatedColumn(dataFrame, aggregationAttributeIndex))
+    def aggregate(self, data_frame: pd.DataFrame, aggregation_attribute_index: int) -> float:
+        return min(get_aggregated_column(data_frame, aggregation_attribute_index))
 
-    def getAggregationPacking(
+    def get_aggregation_packing(
             self,
-            dataFrame: pd.DataFrame,
-            aggregationAttributeIndex: int,
-            lowerBound: float,
-            upperBound: float,
-            possibleAggregations: List[float],
+            data_frame: pd.DataFrame,
+            aggregation_attribute_index: int,
+            lower_bound: float,
+            upper_bound: float,
+            possible_aggregations: List[float],
     ) -> pd.DataFrame:
-        result = emptyDataFrame(dataFrame.columns)
-        minValue = float('inf')
+        result = empty_data_frame(data_frame.columns)
+        min_value = float('inf')
 
-        for index, datasetTuple in dataFrame.iterrows():
-            currentValue = datasetTuple.iloc[aggregationAttributeIndex]
-            if currentValue >= lowerBound:
-                result.loc[index] = datasetTuple
-            if currentValue < minValue:
-                minValue = currentValue
+        for index, dataset_tuple in data_frame.iterrows():
+            current_value = dataset_tuple.iloc[aggregation_attribute_index]
+            if current_value >= lower_bound:
+                result.loc[index] = dataset_tuple
+            if current_value < min_value:
+                min_value = current_value
 
-        if minValue > upperBound:
-            return emptyDataFrame(dataFrame.columns)
+        if min_value > upper_bound:
+            return empty_data_frame(data_frame.columns)
         return result
 
     def __str__(self):

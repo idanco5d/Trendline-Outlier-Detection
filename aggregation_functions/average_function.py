@@ -6,158 +6,158 @@ import pandas as pd
 from aggregation_functions.aggregation_function import AggregationFunction
 from aggregation_functions.count_function import CountFunction
 from aggregation_functions.sum_function import SumFunction
-from Utils import getAggregatedColumn, emptyDataFrame, dataFramesUnion
+from Utils import get_aggregated_column, empty_data_frame, data_frames_union
 
 
 class AverageFunction(AggregationFunction):
     def __init__(self):
         super().__init__()
-        self.sumPossibleAggregations: List[float] = []
-        self.countPossibleAggregations: List[float] = []
-        self.subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float | None] = defaultdict(lambda: None)
-        self.aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame | None] = defaultdict(lambda: None)
+        self.sum_possible_aggregations: List[float] = []
+        self.count_possible_aggregations: List[float] = []
+        self.subsets_existence_with_size: DefaultDict[Tuple[int, float, float], float | None] = defaultdict(lambda: None)
+        self.aggregation_packings: DefaultDict[Tuple[int, float, float], pd.DataFrame | None] = defaultdict(lambda: None)
 
-    def getPossibleSubsetsAggregations(
-            self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int
+    def get_possible_subsets_aggregations(
+            self, data_frame: pd.DataFrame, aggregation_attribute_index: int
     ) -> List[float]:
 
-        self.sumPossibleAggregations = SumFunction().getPossibleSubsetsAggregations(
-            dataFrame, aggregationAttributeIndex
+        self.sum_possible_aggregations = SumFunction().get_possible_subsets_aggregations(
+            data_frame, aggregation_attribute_index
         )
-        self.countPossibleAggregations = CountFunction().getPossibleSubsetsAggregations(
-            dataFrame, aggregationAttributeIndex
+        self.count_possible_aggregations = CountFunction().get_possible_subsets_aggregations(
+            data_frame, aggregation_attribute_index
         )
-        self.subsetsExistenceWithSize = defaultdict(lambda: None)
-        self.aggregationPackings = defaultdict(lambda: None)
+        self.subsets_existence_with_size = defaultdict(lambda: None)
+        self.aggregation_packings = defaultdict(lambda: None)
 
-        avgPossibleAggregations = {x / k for x in self.sumPossibleAggregations
-                                   for k in self.countPossibleAggregations if k != 0}
+        avg_possible_aggregations = {x / k for x in self.sum_possible_aggregations
+                                   for k in self.count_possible_aggregations if k != 0}
 
-        return sorted(avgPossibleAggregations)
+        return sorted(avg_possible_aggregations)
 
-    def aggregate(self, dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> float:
-        aggregationColumn = getAggregatedColumn(dataFrame, aggregationAttributeIndex)
-        return sum(aggregationColumn) / len(aggregationColumn)
+    def aggregate(self, data_frame: pd.DataFrame, aggregation_attribute_index: int) -> float:
+        aggregation_column = get_aggregated_column(data_frame, aggregation_attribute_index)
+        return sum(aggregation_column) / len(aggregation_column)
 
-    def getAggregationPacking(
+    def get_aggregation_packing(
             self,
-            dataFrame: pd.DataFrame,
-            aggregationAttributeIndex: int,
-            lowerBound: float,
-            upperBound: float,
-            possibleAggregations: List[float],
+            data_frame: pd.DataFrame,
+            aggregation_attribute_index: int,
+            lower_bound: float,
+            upper_bound: float,
+            possible_aggregations: List[float],
     ) -> pd.DataFrame:
-        subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float] = defaultdict(lambda: float('-inf'))
-        aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame] = defaultdict(
-            lambda: emptyDataFrame(dataFrame.columns)
+        subsets_existence_with_size: DefaultDict[Tuple[int, float, float], float] = defaultdict(lambda: float('-inf'))
+        aggregation_packings: DefaultDict[Tuple[int, float, float], pd.DataFrame] = defaultdict(
+            lambda: empty_data_frame(data_frame.columns)
         )
 
-        setFirstAggregationPackingAndSubsetsExistence(
-            aggregationAttributeIndex,
-            aggregationPackings,
-            dataFrame,
-            subsetsExistenceWithSize
+        set_first_aggregation_packing_and_subsets_existence(
+            aggregation_attribute_index,
+            aggregation_packings,
+            data_frame,
+            subsets_existence_with_size
         )
 
-        for j in range(1, len(dataFrame)):
-            for sumAggregation in self.sumPossibleAggregations:
-                for countAggregation in self.countPossibleAggregations:
-                    if countAggregation == 0:
+        for j in range(1, len(data_frame)):
+            for sum_aggregation in self.sum_possible_aggregations:
+                for count_aggregation in self.count_possible_aggregations:
+                    if count_aggregation == 0:
                         continue
 
-                    currentIterationTuple = (j, sumAggregation, countAggregation)
-                    if self.subsetsExistenceWithSize[currentIterationTuple] is not None and \
-                            self.aggregationPackings[currentIterationTuple] is not None:
-                        subsetsExistenceWithSize[currentIterationTuple] = (
-                            self.subsetsExistenceWithSize)[currentIterationTuple]
-                        aggregationPackings[(j, sumAggregation, countAggregation)] = (
-                            self.aggregationPackings)[currentIterationTuple]
+                    current_iteration_tuple = (j, sum_aggregation, count_aggregation)
+                    if self.subsets_existence_with_size[current_iteration_tuple] is not None and \
+                            self.aggregation_packings[current_iteration_tuple] is not None:
+                        subsets_existence_with_size[current_iteration_tuple] = (
+                            self.subsets_existence_with_size)[current_iteration_tuple]
+                        aggregation_packings[(j, sum_aggregation, count_aggregation)] = (
+                            self.aggregation_packings)[current_iteration_tuple]
                         continue
 
-                    self.setCurrentAggregationPackingsAndSubsetsExistence(
-                        aggregationAttributeIndex,
-                        aggregationPackings,
-                        countAggregation,
-                        dataFrame,
+                    self.set_current_aggregation_packings_and_subsets_existence(
+                        aggregation_attribute_index,
+                        aggregation_packings,
+                        count_aggregation,
+                        data_frame,
                         j,
-                        subsetsExistenceWithSize,
-                        sumAggregation,
-                        currentIterationTuple
+                        subsets_existence_with_size,
+                        sum_aggregation,
+                        current_iteration_tuple
                     )
 
-        return self.calculateOptimalPacking(
-            aggregationPackings,
-            dataFrame,
-            lowerBound,
-            subsetsExistenceWithSize,
-            upperBound
+        return self.calculate_optimal_packing(
+            aggregation_packings,
+            data_frame,
+            lower_bound,
+            subsets_existence_with_size,
+            upper_bound
         )
 
-    def setCurrentAggregationPackingsAndSubsetsExistence(
+    def set_current_aggregation_packings_and_subsets_existence(
             self,
-            aggregationAttributeIndex: int,
-            aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
-            countAggregation: float,
-            dataFrame: pd.DataFrame,
+            aggregation_attribute_index: int,
+            aggregation_packings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
+            count_aggregation: float,
+            data_frame: pd.DataFrame,
             j: int,
-            subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float],
-            sumAggregation: float,
-            currentIterationTuple: Tuple[int, float, float]
+            subsets_existence_with_size: DefaultDict[Tuple[int, float, float], float],
+            sum_aggregation: float,
+            current_iteration_tuple: Tuple[int, float, float]
     ):
-        skipIndicatorTuple = (j - 1, sumAggregation, countAggregation)
+        skip_indicator_tuple = (j - 1, sum_aggregation, count_aggregation)
 
-        if countAggregation > j + 1:
-            subsetsExistenceWithSize[currentIterationTuple] = float('-inf')
-            self.subsetsExistenceWithSize[currentIterationTuple] = float('-inf')
+        if count_aggregation > j + 1:
+            subsets_existence_with_size[current_iteration_tuple] = float('-inf')
+            self.subsets_existence_with_size[current_iteration_tuple] = float('-inf')
         else:
-            currentValue = dataFrame.iloc[j, aggregationAttributeIndex]
-            addIndicatorTuple = (j - 1, sumAggregation - currentValue, countAggregation - 1)
+            current_value = data_frame.iloc[j, aggregation_attribute_index]
+            add_indicator_tuple = (j - 1, sum_aggregation - current_value, count_aggregation - 1)
 
-            addCurrentRowIndicator = (
-                    subsetsExistenceWithSize[addIndicatorTuple] + 1
+            add_current_row_indicator = (
+                    subsets_existence_with_size[add_indicator_tuple] + 1
             )
-            skipCurrentRowIndicator = (
-                subsetsExistenceWithSize[skipIndicatorTuple]
+            skip_current_row_indicator = (
+                subsets_existence_with_size[skip_indicator_tuple]
             )
 
-            if addCurrentRowIndicator > skipCurrentRowIndicator:
-                subsetsExistenceWithSize[currentIterationTuple] = addCurrentRowIndicator
-                self.subsetsExistenceWithSize[currentIterationTuple] = addCurrentRowIndicator
-                aggregationPackings[currentIterationTuple] = dataFramesUnion(
-                    aggregationPackings[addIndicatorTuple],
-                    dataFrame.iloc[[j]]
+            if add_current_row_indicator > skip_current_row_indicator:
+                subsets_existence_with_size[current_iteration_tuple] = add_current_row_indicator
+                self.subsets_existence_with_size[current_iteration_tuple] = add_current_row_indicator
+                aggregation_packings[current_iteration_tuple] = data_frames_union(
+                    aggregation_packings[add_indicator_tuple],
+                    data_frame.iloc[[j]]
                 )
-                self.aggregationPackings[currentIterationTuple] = aggregationPackings[currentIterationTuple]
+                self.aggregation_packings[current_iteration_tuple] = aggregation_packings[current_iteration_tuple]
             else:
-                subsetsExistenceWithSize[currentIterationTuple] = skipCurrentRowIndicator
-                self.subsetsExistenceWithSize[currentIterationTuple] = skipCurrentRowIndicator
-                aggregationPackings[currentIterationTuple] = aggregationPackings[
-                    skipIndicatorTuple
+                subsets_existence_with_size[current_iteration_tuple] = skip_current_row_indicator
+                self.subsets_existence_with_size[current_iteration_tuple] = skip_current_row_indicator
+                aggregation_packings[current_iteration_tuple] = aggregation_packings[
+                    skip_indicator_tuple
                 ]
-                self.aggregationPackings[currentIterationTuple] = aggregationPackings[currentIterationTuple]
+                self.aggregation_packings[current_iteration_tuple] = aggregation_packings[current_iteration_tuple]
 
-    def calculateOptimalPacking(
+    def calculate_optimal_packing(
             self,
-            aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
-            dataFrame: pd.DataFrame,
-            lowerBound: float,
-            subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float],
-            upperBound: float
+            aggregation_packings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
+            data_frame: pd.DataFrame,
+            lower_bound: float,
+            subsets_existence_with_size: DefaultDict[Tuple[int, float, float], float],
+            upper_bound: float
     ):
-        maxSubsetSize = float('-inf')
-        result: pd.DataFrame = emptyDataFrame(dataFrame.columns)
+        max_subset_size = float('-inf')
+        result: pd.DataFrame = empty_data_frame(data_frame.columns)
 
-        for sumAggregation in self.sumPossibleAggregations:
-            for countAggregation in self.countPossibleAggregations:
-                if countAggregation == 0:
+        for sum_aggregation in self.sum_possible_aggregations:
+            for count_aggregation in self.count_possible_aggregations:
+                if count_aggregation == 0:
                     continue
-                if lowerBound <= (sumAggregation / countAggregation) <= upperBound:
-                    currentSubsetTuple = (len(dataFrame) - 1, sumAggregation, countAggregation)
-                    currentSubsetSize = subsetsExistenceWithSize[currentSubsetTuple]
+                if lower_bound <= (sum_aggregation / count_aggregation) <= upper_bound:
+                    current_subset_tuple = (len(data_frame) - 1, sum_aggregation, count_aggregation)
+                    current_subset_size = subsets_existence_with_size[current_subset_tuple]
 
-                    if currentSubsetSize > maxSubsetSize:
-                        maxSubsetSize = currentSubsetSize
-                        result = aggregationPackings[currentSubsetTuple]
+                    if current_subset_size > max_subset_size:
+                        max_subset_size = current_subset_size
+                        result = aggregation_packings[current_subset_tuple]
 
         return result
 
@@ -165,15 +165,15 @@ class AverageFunction(AggregationFunction):
         return "AVG"
 
 
-def setFirstAggregationPackingAndSubsetsExistence(
-        aggregationAttributeIndex: int,
-        aggregationPackings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
-        dataFrame: pd.DataFrame,
-        subsetsExistenceWithSize: DefaultDict[Tuple[int, float, float], float]
+def set_first_aggregation_packing_and_subsets_existence(
+        aggregation_attribute_index: int,
+        aggregation_packings: DefaultDict[Tuple[int, float, float], pd.DataFrame],
+        data_frame: pd.DataFrame,
+        subsets_existence_with_size: DefaultDict[Tuple[int, float, float], float]
 ):
-    for j in range(len(dataFrame)):
-        subsetsExistenceWithSize[(j, 0, 0)] = 0
+    for j in range(len(data_frame)):
+        subsets_existence_with_size[(j, 0, 0)] = 0
 
-    firstRow = dataFrame.iloc[[0]]
-    subsetsExistenceWithSize[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = 1
-    aggregationPackings[(0, firstRow.iloc[0, aggregationAttributeIndex], 1)] = firstRow
+    first_row = data_frame.iloc[[0]]
+    subsets_existence_with_size[(0, first_row.iloc[0, aggregation_attribute_index], 1)] = 1
+    aggregation_packings[(0, first_row.iloc[0, aggregation_attribute_index], 1)] = first_row

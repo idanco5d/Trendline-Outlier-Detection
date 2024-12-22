@@ -1,18 +1,18 @@
-from input_parser import parseInput
-from optimal_subset_with_constraint import calculateOptimalSubsetWithConstraint
-from Utils import calculateRemovedTuples
+from input_parser import parse_input
+from optimal_subset_with_constraint import calculate_optimal_subset_with_constraint
+from Utils import calculate_removed_tuples
 
 if __name__ == '__main__':
-    aggregationFunction, data, aggregationIndex, groupedRowsByValue = parseInput()
+    aggregation_function, data, aggregation_index, grouped_rows_by_value = parse_input()
 
     print("The parsed data is: \n", data)
-    print("Input aggregation function: ", aggregationFunction)
+    print("Input aggregation function: ", aggregation_function)
 
-    solution = calculateOptimalSubsetWithConstraint(
-        groupedRowsByValue,
-        aggregationFunction,
-        aggregationIndex
+    solution = calculate_optimal_subset_with_constraint(
+        grouped_rows_by_value,
+        aggregation_function,
+        aggregation_index
     )
 
     print("Optimal solution is: \n", solution)
-    print("The removed tuples are: \n", calculateRemovedTuples(data, solution))
+    print("The removed tuples are: \n", calculate_removed_tuples(data, solution))

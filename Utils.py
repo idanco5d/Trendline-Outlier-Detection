@@ -6,30 +6,30 @@ from pandas.core.groupby import DataFrameGroupBy
 from binary_search_default_dict import BinarySearchDefaultDict
 
 
-def getAggregatedColumn(dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> pd.Series:
-    return dataFrame.iloc[:, aggregationAttributeIndex]
+def get_aggregated_column(data_frame: pd.DataFrame, aggregation_attribute_index: int) -> pd.Series:
+    return data_frame.iloc[:, aggregation_attribute_index]
 
 
-def getListOfColumnValues(dataFrame: pd.DataFrame, aggregationAttributeIndex: int) -> List[float]:
-    return list(getAggregatedColumn(dataFrame, aggregationAttributeIndex).unique())
+def get_list_of_column_values(data_frame: pd.DataFrame, aggregation_attribute_index: int) -> List[float]:
+    return list(get_aggregated_column(data_frame, aggregation_attribute_index).unique())
 
 
-def emptyDataFrame(baseDfColumns) -> pd.DataFrame:
-    return pd.DataFrame(columns=baseDfColumns)
+def empty_data_frame(base_df_columns) -> pd.DataFrame:
+    return pd.DataFrame(columns=base_df_columns)
 
 
-def listOfEmptyDictionaries(outputListLength: int, columnBase) -> List[DefaultDict[float, pd.DataFrame]]:
-    return [BinarySearchDefaultDict(columnBase) for _ in range(outputListLength)]
+def list_of_empty_dictionaries(output_list_length: int, column_base) -> List[DefaultDict[float, pd.DataFrame]]:
+    return [BinarySearchDefaultDict(column_base) for _ in range(output_list_length)]
 
 
-def getGroupByKey(groupedRows: DataFrameGroupBy, key: Hashable) -> pd.DataFrame:
-    firstKey = next(iter(groupedRows.groups))
+def get_group_by_key(grouped_rows: DataFrameGroupBy, key: Hashable) -> pd.DataFrame:
+    firstKey = next(iter(grouped_rows.groups))
     if isinstance(firstKey, tuple):
-        return groupedRows.get_group(key)
-    return groupedRows.get_group((key,))
+        return grouped_rows.get_group(key)
+    return grouped_rows.get_group((key,))
 
 
-def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+def data_frames_union(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     if df1.empty:
         return df2
     if df2.empty:
@@ -37,8 +37,8 @@ def dataFramesUnion(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([df1, df2], ignore_index=False)
 
 
-def calculateRemovedTuples(originalDataFrame: pd.DataFrame, containedDataFrame: pd.DataFrame) -> pd.DataFrame:
-    mergedDataFrame = originalDataFrame.merge(containedDataFrame, how='outer', indicator=True)
-    differenceDf = mergedDataFrame[mergedDataFrame['_merge'] == 'left_only']
+def calculate_removed_tuples(original_data_frame: pd.DataFrame, contained_data_frame: pd.DataFrame) -> pd.DataFrame:
+    merged_data_frame = original_data_frame.merge(contained_data_frame, how='outer', indicator=True)
+    difference_df = merged_data_frame[merged_data_frame['_merge'] == 'left_only']
 
-    return differenceDf.drop(columns=['_merge'])
+    return difference_df.drop(columns=['_merge'])
