@@ -23,30 +23,17 @@ class CountDistinctFunction(AggregationFunction):
             upper_bound: float,
             possible_aggregations: List[float],
     ) -> pd.DataFrame:
-        result = data_frame.copy()
-
-        while True:
-            aggregated_column = get_aggregated_column(result, aggregation_attribute_index)
-            values_count: Dict[float, int] = aggregated_column.value_counts().to_dict()
-            count_distinct: int = aggregated_column.nunique()
-
-            if count_distinct <= upper_bound:
-                break
-
-            counts = values_count.values()
-            if len(counts) == 0:
-                break
-
-            min_count = min(counts)
-            for val, count in values_count.items():
-                if count == min_count:
-                    result = result[~(aggregated_column == val)]
-                    break
+        aggregation_col = data_frame.columns[aggregation_attribute_index]
+        count_distinct = data_frame[aggregation_col].nunique()
 
         if count_distinct < lower_bound:
             return empty_data_frame(data_frame.columns)
 
-        return result
+        num_to_remove = count_distinct - upper_bound
+        value_counts = data_frame[aggregation_col].value_counts()
+        # If num_to_remove <= 0, nsmallest returns an empty list
+        least_common = value_counts.nsmallest(num_to_remove).index
+        return data_frame.loc[~data_frame[aggregation_col].isin(least_common)]
 
     def __str__(self):
         return "COUNT_DISTINCT"

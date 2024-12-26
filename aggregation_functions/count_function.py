@@ -30,9 +30,9 @@ class CountFunction(AggregationFunction):
         if aggregated_column_size < lower_bound:
             return empty_frame
 
-        amount_tuples_to_return = min(upper_bound, aggregated_column_size)
+        amount_tuples_to_return = int(min(upper_bound, aggregated_column_size))
 
-        return data_frame.iloc[:amount_tuples_to_return]
+        return data_frame.head(amount_tuples_to_return)
 
     def __str__(self):
         return "COUNT"
