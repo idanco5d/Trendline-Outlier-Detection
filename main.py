@@ -1,6 +1,6 @@
 from input_parser import parse_input
 from optimal_subset_with_constraint import calculate_optimal_subset_with_constraint
-from Utils import calculate_removed_tuples
+from utils import calculate_removed_tuples
 
 if __name__ == '__main__':
     aggregation_function, data, aggregation_index, grouped_rows_by_value = parse_input()

@@ -3,7 +3,7 @@ from typing import Tuple, DefaultDict, List
 
 import pandas as pd
 
-from Utils import get_aggregated_column, empty_data_frame
+from utils import get_aggregated_column, empty_data_frame
 from aggregation_functions.aggregation_function import AggregationFunction
 from aggregation_functions.count_function import CountFunction
 from aggregation_functions.sum_function import SumFunction

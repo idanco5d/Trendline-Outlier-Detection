@@ -4,7 +4,7 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from aggregation_functions.aggregation_function import AggregationFunction
-from Utils import list_of_empty_dictionaries, get_group_by_key, empty_data_frame, data_frames_union
+from utils import list_of_empty_dictionaries, get_group_by_key, empty_data_frame, data_frames_union
 
 
 def calculate_optimal_subset_with_constraint(

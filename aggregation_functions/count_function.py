@@ -3,7 +3,7 @@ from typing import List
 import pandas as pd
 
 from aggregation_functions.aggregation_function import AggregationFunction
-from Utils import empty_data_frame, get_aggregated_column
+from utils import empty_data_frame, get_aggregated_column
 
 
 class CountFunction(AggregationFunction):
