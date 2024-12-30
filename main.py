@@ -3,15 +3,15 @@ from optimal_subset_with_constraint import calculate_optimal_subset_with_constra
 from utils import calculate_removed_tuples
 
 if __name__ == '__main__':
-    aggregation_function, data, aggregation_index, grouped_rows_by_value = parse_input()
+    agg, data, agg_col, grouped_rows_by_value = parse_input()
 
     print("The parsed data is: \n", data)
-    print("Input aggregation function: ", aggregation_function)
+    print("Input aggregation function: ", agg)
 
     solution = calculate_optimal_subset_with_constraint(
         grouped_rows_by_value,
-        aggregation_function,
-        aggregation_index
+        agg,
+        agg_col
     )
 
     print("Optimal solution is: \n", solution)

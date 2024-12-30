@@ -4,72 +4,66 @@ from typing import List
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
-from aggregation_functions.aggregation_function import AggregationFunction
-from aggregation_functions.average_function import AverageFunction
-from aggregation_functions.count_distinct_function import CountDistinctFunction
-from aggregation_functions.count_function import CountFunction
-from aggregation_functions.max_function import MaxFunction
-from aggregation_functions.min_function import MinFunction
-from aggregation_functions.sum_function import SumFunction
+from aggregations.aggregation import Aggregation
+from aggregations.average import Average
+from aggregations.count_distinct import CountDistinct
+from aggregations.count import Count
+from aggregations.max import Max
+from aggregations.min import Min
+from aggregations.sum import Sum
 
 
-def parse_input() -> (AggregationFunction, pd.DataFrame, int, DataFrameGroupBy):
+def parse_input() -> (Aggregation, pd.DataFrame, int, DataFrameGroupBy):
     args = get_input_arguments()
-    data = parse_csv_to_data_frame(args.datasetFileName)
+    df = pd.read_csv(args.datasetFileName)
+    check_agg_col(df, args.aggregationColumn)
 
-    return (get_aggregation_function_from_input(args.aggregationFunction),
-            data,
-            get_aggregation_attribute_index_by_name(data, args.aggregationAttributeName),
-            group_frame_by_attributes(data, args.groupingAttributesNames, args.aggregationAttributeName))
+    return (
+        get_aggregation_function_from_input(args.aggregationFunction),
+        df,
+        args.aggregationColumn,
+        group_frame_by_attributes(df, args.groupingColumns, args.aggregationColumn)
+    )
 
 
 def get_input_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('aggregationFunction', type=str, help='Chosen aggregation function')
     parser.add_argument('datasetFileName', type=str, help='Your dataset csv file')
-    parser.add_argument('aggregationAttributeName', type=str, help='Name of the aggregated attribute')
-    parser.add_argument('groupingAttributesNames', nargs='+', type=str, help='Names of the grouping attributes')
+    parser.add_argument('aggregationColumn', type=str, help='Name of the aggregated column')
+    parser.add_argument('groupingColumns', nargs='+', type=str, help='Names of the grouping attributes')
 
     return parser.parse_args()
 
 
-def parse_csv_to_data_frame(filename: str) -> pd.DataFrame:
-    return pd.read_csv(filename)
-
-
-def get_aggregation_function_from_input(function_name: str) -> AggregationFunction:
+def get_aggregation_function_from_input(function_name: str) -> Aggregation:
     match function_name:
         case "MAX":
-            return MaxFunction()
+            return Max()
         case "MIN":
-            return MinFunction()
+            return Min()
         case "COUNT":
-            return CountFunction()
+            return Count()
         case "COUNT_DISTINCT":
-            return CountDistinctFunction()
+            return CountDistinct()
         case "SUM":
-            return SumFunction()
+            return Sum()
         case "AVG":
-            return AverageFunction()
+            return Average()
 
     raise ValueError(f"Unrecognized aggregation function: {function_name}")
 
 
-def get_aggregation_attribute_index_by_name(data: pd.DataFrame, aggregation_attribute_name: str) -> int:
-    try:
-        aggregation_attribute_index = data.columns.get_loc(aggregation_attribute_name)
-    except KeyError:
+def check_agg_col(data_df: pd.DataFrame, agg_col: str):
+    if agg_col not in data_df.columns:
         raise ValueError('Invalid aggregation attribute name')
 
-    return aggregation_attribute_index
 
-
-def group_frame_by_attributes(data: pd.DataFrame, grouping_attributes_names: List[str],
-                              aggregation_attribute_name: str) -> DataFrameGroupBy:
-    data = data.sort_values(by=grouping_attributes_names + [aggregation_attribute_name])
+def group_frame_by_attributes(df: pd.DataFrame, grouping_cols: List[str], agg_col: str) -> DataFrameGroupBy:
     try:
-        grouped_rows_by_value = data.groupby(grouping_attributes_names)
+        df = df.sort_values(by=grouping_cols + [agg_col])
+        df_grouped = df.groupby(grouping_cols)
     except KeyError:
         raise ValueError('Invalid grouping attribute name')
 
-    return grouped_rows_by_value
+    return df_grouped

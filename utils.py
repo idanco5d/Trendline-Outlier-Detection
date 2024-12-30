@@ -6,14 +6,6 @@ from pandas.core.groupby import DataFrameGroupBy
 from binary_search_default_dict import BinarySearchDefaultDict
 
 
-def get_aggregated_column(data_frame: pd.DataFrame, aggregation_attribute_index: int) -> pd.Series:
-    return data_frame.iloc[:, aggregation_attribute_index]
-
-
-def get_list_of_column_values(data_frame: pd.DataFrame, aggregation_attribute_index: int) -> List[float]:
-    return list(get_aggregated_column(data_frame, aggregation_attribute_index).unique())
-
-
 def empty_data_frame(base_df_columns) -> pd.DataFrame:
     return pd.DataFrame(columns=base_df_columns)
 
@@ -30,11 +22,7 @@ def get_group_by_key(grouped_rows: DataFrameGroupBy, key: Hashable) -> pd.DataFr
 
 
 def data_frames_union(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    if df1.empty:
-        return df2
-    if df2.empty:
-        return df1
-    return pd.concat([df1, df2], ignore_index=False)
+    return pd.concat([df1, df2])
 
 
 def calculate_removed_tuples(original_data_frame: pd.DataFrame, contained_data_frame: pd.DataFrame) -> pd.DataFrame:
