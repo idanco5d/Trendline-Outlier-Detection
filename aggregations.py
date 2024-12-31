@@ -1,4 +1,4 @@
-from typing import Dict, List, Callable, Union
+from typing import Dict
 
 import pandas as pd
 
@@ -42,11 +42,8 @@ def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, pd.DataFrame]
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
     sum_subsets = {0: set()}  # Initialize with sum 0 having 0 rows and an empty subset
 
-    # values = df[agg_col].tolist()
-
     for index, row in df.iterrows():
         value = row[agg_col]
-    # for i, value in enumerate(values):
         current_sum_subsets = sum_subsets.copy()  # Avoid modifying dict while iterating
 
         for current_sum, subset in sum_subsets.items():
@@ -60,12 +57,9 @@ def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, pd.DataFrame]
 
 
 def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
-    # values = df[agg_col].tolist()
-
-    # DP table: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
+    # Dynamic programming dictionary: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
     sum_subsets = {0: {0: set()}}
 
-    # for i, value in enumerate(values):
     for index, row in df.iterrows():
         value = row[agg_col]
         # keep a static copy of the keys because we are adding keys in the loop
@@ -90,39 +84,3 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
                 avg_subsets[avg] = subset
 
     return avg_subsets
-
-
-def get_optimal_trend(
-        df: pd.DataFrame,
-        group_cols: Union[str, List[str]],
-        agg_col: str,
-        agg: Callable[[pd.DataFrame, str], Dict[float, set]]
-) -> pd.DataFrame:
-    # Dynamic programming table: key = agg value, value = maximal subset with agg value
-    value_subsets: Dict[float, set] = {}
-    for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
-        current_group_subsets = agg(group_df, agg_col)
-        new_value_subsets: Dict[float, set] = {}
-
-        for value, subset in current_group_subsets.items():
-            previous_groups_subset = get_maximal_set_with_upper_bound(value_subsets, value)
-            new_value_subsets[value] = previous_groups_subset | subset
-
-        for value, subset in value_subsets.items():
-            if value not in new_value_subsets.keys():
-                new_value_subsets[value] = value_subsets[value]
-
-        value_subsets = new_value_subsets
-
-    optimal_subset = get_maximal_set_with_upper_bound(value_subsets)
-    return df.iloc[list(optimal_subset)].reset_index(drop=True)
-
-
-def get_maximal_set_with_upper_bound(value_sets: Dict[float, set], upper_bound: float = None) -> set:
-    maximal_set = set()
-
-    for current_value, current_set in value_sets.items():
-        if (upper_bound is None or current_value <= upper_bound) and len(current_set) > len(maximal_set):
-            maximal_set = current_set
-
-    return maximal_set

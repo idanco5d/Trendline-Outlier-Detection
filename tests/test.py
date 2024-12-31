@@ -1,67 +1,55 @@
 import unittest
+from typing import Callable, Dict
 
 import pandas as pd
 from pandas._testing import assert_frame_equal
 
-from aggregations.aggregation import Aggregation
-from aggregations.average import Average
-from aggregations.count_distinct import CountDistinct
-from aggregations.count import Count
-from aggregations.max import Max
-from aggregations.min import Min
-from aggregations.sum import Sum
-from input_parser import group_frame_by_attributes
-from optimal_subset_with_constraint import calculate_optimal_subset_with_constraint
+from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_subsets, get_max_subsets, \
+    get_min_subsets, get_sum_subsets
+from optimal_subset_with_constraint import get_optimal_subset
 
 
 class TestOptimalSolution(unittest.TestCase):
     def test_max(self):
-        actual_solution = get_optimal_solution("max/max_initial_file.csv", Max())
+        actual_solution = get_optimal_solution("max/max_initial_file.csv", get_max_subsets)
         expected_solution = pd.read_csv("max/max_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
     def test_min(self):
-        actual_solution = get_optimal_solution("min/min_initial_file.csv", Min())
+        actual_solution = get_optimal_solution("min/min_initial_file.csv", get_min_subsets)
         expected_solution = pd.read_csv("min/min_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
     def test_count(self):
-        actual_solution = get_optimal_solution("count/count_initial_file.csv", Count())
+        actual_solution = get_optimal_solution("count/count_initial_file.csv", get_count_subsets)
+        print(actual_solution)
         expected_solution = pd.read_csv("count/count_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
     def test_count_distinct(self):
-        actual_solution = get_optimal_solution("count_distinct/count_distinct_initial_file.csv", CountDistinct())
+        actual_solution = get_optimal_solution("count_distinct/count_distinct_initial_file.csv",
+                                               get_count_distinct_subsets)
         expected_solution = pd.read_csv("count_distinct/count_distinct_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
     def test_sum(self):
-        actual_solution = get_optimal_solution("sum/sum_initial_file.csv", Sum())
+        actual_solution = get_optimal_solution("sum/sum_initial_file.csv", get_sum_subsets)
         expected_solution = pd.read_csv("sum/sum_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
     def test_average(self):
-        actual_solution = get_optimal_solution("average/average_initial_file.csv", Average())
+        actual_solution = get_optimal_solution("average/average_initial_file.csv", get_avg_subsets)
         expected_solution = pd.read_csv("average/average_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
 
-def get_optimal_solution(input_file_name: str, function: Aggregation) -> pd.DataFrame:
-    data = pd.read_csv(input_file_name)
-    grouped_rows_by_value = group_frame_by_attributes(data, ['grouping_1', 'grouping_2'], 'aggregator')
-    return calculate_optimal_subset_with_constraint(
-        grouped_rows_by_value,
-        function,
-        'aggregator'
-    )
+def get_optimal_solution(input_file_name: str, agg: Callable[[pd.DataFrame, str], Dict[float, set]]) -> pd.DataFrame:
+    df = pd.read_csv(input_file_name)
+    return get_optimal_subset(df, ['grouping_1', 'grouping_2'], 'aggregator', agg)
 
 
 def assert_data_frames_equal(df1: pd.DataFrame, df2: pd.DataFrame):
-    assert_frame_equal(reset_df_index(df1), reset_df_index(df2), False)
-
-
-def reset_df_index(df: pd.DataFrame) -> pd.DataFrame:
-    return df.reset_index(drop=True)
+    assert_frame_equal(df1.reset_index(drop=True), df2.reset_index(drop=True), False)
 
 
 if __name__ == '__main__':

@@ -1,101 +1,39 @@
-from typing import List, Dict
+from typing import Dict, List, Callable, Union
 
 import pandas as pd
-from pandas.core.groupby import DataFrameGroupBy
-
-from aggregations.aggregation import Aggregation
-from utils import list_of_empty_dictionaries, get_group_by_key, empty_data_frame, data_frames_union
 
 
-def calculate_optimal_subset_with_constraint(
-    grouped_rows: DataFrameGroupBy,
-    agg: Aggregation,
-    agg_col: str
-) -> pd.DataFrame:
-    grouping_values = iter(grouped_rows.groups.keys())
-    minimal_grouping_value_group = get_group_by_key(grouped_rows, next(grouping_values))
-    solutions = list_of_empty_dictionaries(
-        len(grouped_rows.groups.keys()), minimal_grouping_value_group.columns
-    )
-
-    calculate_minimal_value_group_solution(
-        solutions,
-        agg,
-        minimal_grouping_value_group,
-        agg_col
-    )
-
-    for current_index, grouping_value in enumerate(grouping_values, start=1):
-        current_value_group = get_group_by_key(grouped_rows, grouping_value)
-        current_possible_aggregations = agg.get_possible_subsets_aggregations(
-            current_value_group,
-            agg_col
-        )
-        possible_aggregations_length = len(current_possible_aggregations)
-        solution_max_size_per_upper_bound: List[int] = [0 for _ in range(possible_aggregations_length)]
-
-        for i in range(possible_aggregations_length):
-            lower_bound = current_possible_aggregations[i]
-            for j in range(i, possible_aggregations_length):
-                upper_bound = current_possible_aggregations[j]
-
-                current_bounds_solution = calculate_current_bounds_solution(
-                    agg, current_value_group, agg_col, lower_bound, upper_bound, solutions, current_index
-                )
-                current_bounds_solution_length = len(current_bounds_solution)
-
-                if current_bounds_solution_length > solution_max_size_per_upper_bound[j]:
-                    solution_max_size_per_upper_bound[j] = current_bounds_solution_length
-                    solutions[current_index][upper_bound] = current_bounds_solution
-
-    final_solution_candidates = solutions[-1].values()
-    if len(final_solution_candidates) == 0:
-        return empty_data_frame(minimal_grouping_value_group.columns)
-    return max(final_solution_candidates, key=lambda df: df.size).sort_index()
-
-
-def calculate_minimal_value_group_solution(
-        solutions: List[Dict[float, pd.DataFrame]],
-        agg: Aggregation,
-        minimal_value_group: pd.DataFrame,
-        agg_col: str
-):
-    possible_aggregations = agg.get_possible_subsets_aggregations(
-        minimal_value_group, agg_col
-    )
-    min_possible_aggregation = min(possible_aggregations)
-
-    for upper_bound in possible_aggregations:
-        solutions[0][upper_bound] = agg.get_aggregation_packing(
-            minimal_value_group,
-            agg_col,
-            min_possible_aggregation,
-            upper_bound
-        )
-
-
-def calculate_current_bounds_solution(
-        agg: Aggregation,
-        current_value_group: pd.DataFrame,
+def get_optimal_subset(
+        df: pd.DataFrame,
+        group_cols: Union[str, List[str]],
         agg_col: str,
-        lower_bound: float,
-        upper_bound: float,
-        solutions: List[Dict[float, pd.DataFrame]],
-        current_index: int,
+        agg: Callable[[pd.DataFrame, str], Dict[float, set]]
 ) -> pd.DataFrame:
-    aggregation_packing = agg.get_aggregation_packing(
-        current_value_group,
-        agg_col,
-        lower_bound,
-        upper_bound
-    )
+    # Dynamic programming table: key = agg value, value = maximal subset with agg value
+    value_subsets: Dict[float, set] = {}
+    for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
+        current_group_subsets = agg(group_df, agg_col)
+        new_value_subsets: Dict[float, set] = {}
 
-    if len(aggregation_packing) == 0:
-        current_bounds_solution = solutions[current_index - 1][lower_bound]
-    else:
-        aggregation = agg.aggregate(aggregation_packing, agg_col)
-        current_bounds_solution = data_frames_union(
-            solutions[current_index - 1][aggregation], aggregation_packing
-        )
+        for value, subset in current_group_subsets.items():
+            previous_groups_subset = get_maximal_set_with_upper_bound(value_subsets, value)
+            new_value_subsets[value] = previous_groups_subset | subset
 
-    return current_bounds_solution
+        for value, subset in value_subsets.items():
+            if value not in new_value_subsets.keys():
+                new_value_subsets[value] = value_subsets[value]
+
+        value_subsets = new_value_subsets
+
+    optimal_subset = get_maximal_set_with_upper_bound(value_subsets)
+    return df.iloc[list(optimal_subset)].reset_index(drop=True)
+
+
+def get_maximal_set_with_upper_bound(value_sets: Dict[float, set], upper_bound: float = None) -> set:
+    maximal_set = set()
+
+    for current_value, current_set in value_sets.items():
+        if (upper_bound is None or current_value <= upper_bound) and len(current_set) > len(maximal_set):
+            maximal_set = current_set
+
+    return maximal_set
