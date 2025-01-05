@@ -38,7 +38,7 @@ def get_count_distinct_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, se
     return subsets
 
 
-def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, pd.DataFrame]:
+def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
     sum_subsets = {0: set()}  # Initialize with sum 0 having 0 rows and an empty subset
 
