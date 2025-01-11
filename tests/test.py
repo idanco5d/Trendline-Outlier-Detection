@@ -22,7 +22,6 @@ class TestOptimalSolution(unittest.TestCase):
 
     def test_count(self):
         actual_solution = get_optimal_solution("count/count_initial_file.csv", get_count_subsets)
-        print(actual_solution)
         expected_solution = pd.read_csv("count/count_expected_result.csv")
         assert_data_frames_equal(actual_solution, expected_solution)
 
@@ -45,7 +44,8 @@ class TestOptimalSolution(unittest.TestCase):
 
 def get_optimal_solution(input_file_name: str, agg: Callable[[pd.DataFrame, str], Dict[float, set]]) -> pd.DataFrame:
     df = pd.read_csv(input_file_name)
-    return get_optimal_subset(df, ['grouping_1', 'grouping_2'], 'aggregator', agg)
+    result_df, removed_df = get_optimal_subset(df, ['grouping_1', 'grouping_2'], 'aggregator', agg)
+    return result_df
 
 
 def assert_data_frames_equal(df1: pd.DataFrame, df2: pd.DataFrame):
