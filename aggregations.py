@@ -1,3 +1,4 @@
+from itertools import combinations
 from typing import Dict
 
 import pandas as pd
@@ -84,3 +85,52 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
                 avg_subsets[avg] = subset
 
     return avg_subsets
+
+
+def _get_possible_medians(df: pd.DataFrame, agg_col: str) -> set[float]:
+    unique_values = df[agg_col].unique()
+    medians = set(unique_values)
+
+    # The average of every pair of values is a possible median
+    for a, b in combinations(unique_values, 2):
+        medians.add((a + b) / 2)
+
+    return medians
+
+
+def _get_subset_with_median(df: pd.DataFrame, agg_col: str, median: float) -> set[int]:
+    df = df.sort_values(by=agg_col)
+    smaller_df = df.loc[df[agg_col].lt(median)]
+    equal_df = df.loc[df[agg_col].eq(median)]
+    greater_df = df.loc[df[agg_col].gt(median)]
+    all_median = df[agg_col].median()
+
+    if all_median > median:
+        subset_df = pd.concat([
+            smaller_df,
+            equal_df,
+            greater_df.nsmallest(len(smaller_df) + len(equal_df), agg_col)
+        ])
+    elif all_median < median:
+        subset_df = pd.concat([
+            smaller_df.nlargest(len(equal_df) + len(greater_df), agg_col),
+            equal_df,
+            greater_df
+        ])
+    else:
+        subset_df = df
+
+    if subset_df[agg_col].median() != median:
+        raise Exception('weird')
+
+    return get_index_set(subset_df)
+
+
+# WIP
+def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+    possible_medians = _get_possible_medians(df, agg_col)
+
+    return {
+        median: _get_subset_with_median(df, agg_col, median)
+        for median in possible_medians
+    }
