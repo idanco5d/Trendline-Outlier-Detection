@@ -9,7 +9,7 @@ def get_optimal_subset(
         agg_col: str,
         agg: Callable[[pd.DataFrame, str], Dict[float, set]]
 ) -> (pd.DataFrame, pd.DataFrame):
-    df = df.loc[df[group_cols].notnull().all(axis=1)]
+    df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     # Dynamic programming table: key = agg value, value = maximal subset with agg value
     value_subsets: Dict[float, set] = {}
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
