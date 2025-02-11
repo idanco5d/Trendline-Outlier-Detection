@@ -4,7 +4,7 @@ from typing import Callable, List
 import pandas as pd
 
 from aggregations import get_avg_subsets, get_count_distinct_subsets, get_max_subsets, \
-    get_min_subsets, get_sum_subsets, get_count_subsets
+    get_min_subsets, get_sum_subsets, get_count_subsets, get_median_subsets
 from optimal_subset_with_constraint import get_optimal_subset
 
 GROUP_COLS = ['grouping_1', 'grouping_2']
@@ -35,13 +35,18 @@ def get_avg(df: pd.DataFrame) -> pd.Series:
     return df.mean()
 
 
+def get_median(df: pd.DataFrame) -> pd.Series:
+    return df.median()
+
+
 TEST_PARAMS = {
     'max': [get_max_subsets, get_max],
     'min': [get_min_subsets, get_min],
     'count': [get_count_subsets, get_count],
     'count_distinct': [get_count_distinct_subsets, get_count_distinct],
     'sum': [get_sum_subsets, get_sum],
-    'avg': [get_avg_subsets, get_avg]
+    'avg': [get_avg_subsets, get_avg],
+    'median': [get_median_subsets, get_median]
 }
 
 
@@ -95,6 +100,9 @@ class TestOptimalSolution(unittest.TestCase):
 
     def test_avg(self):
         test_agg('avg')
+
+    def test_median(self):
+        test_agg('median')
 
 
 if __name__ == '__main__':

@@ -87,19 +87,7 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
     return avg_subsets
 
 
-def _get_possible_medians(df: pd.DataFrame, agg_col: str) -> set[float]:
-    unique_values = df[agg_col].unique()
-    medians = set(unique_values)
-
-    # The average of every pair of values is a possible median
-    for a, b in combinations(unique_values, 2):
-        medians.add((a + b) / 2)
-
-    return medians
-
-
-def _get_subset_with_median(df: pd.DataFrame, agg_col: str, median: float) -> set[int]:
-    df = df.sort_values(by=agg_col)
+def _get_median_subset_odd(df: pd.DataFrame, agg_col: str, median: float) -> set[int]:
     smaller_df = df.loc[df[agg_col].lt(median)]
     equal_df = df.loc[df[agg_col].eq(median)]
     greater_df = df.loc[df[agg_col].gt(median)]
@@ -109,28 +97,61 @@ def _get_subset_with_median(df: pd.DataFrame, agg_col: str, median: float) -> se
         subset_df = pd.concat([
             smaller_df,
             equal_df,
-            greater_df.nsmallest(len(smaller_df) + len(equal_df), agg_col)
+            greater_df.head(len(smaller_df) + len(equal_df) - 1)
         ])
+
     elif all_median < median:
         subset_df = pd.concat([
-            smaller_df.nlargest(len(equal_df) + len(greater_df), agg_col),
+            smaller_df.tail(len(equal_df) + len(greater_df) - 1),
             equal_df,
+            greater_df
+        ])
+
+    else:
+        subset_df = df
+
+    if subset_df[agg_col].median() != median:
+        raise Exception('Reached wrong median')
+
+    return get_index_set(subset_df)
+
+
+def _get_median_subset_even(df: pd.DataFrame, agg_col: str, low: float, high: float) -> set[int]:
+    median = (low + high) / 2
+    smaller_df = df.loc[df[agg_col].le(low)]
+    greater_df = df.loc[df[agg_col].ge(high)]
+
+    if len(smaller_df) < len(greater_df):
+        subset_df = pd.concat([
+            smaller_df,
+            greater_df.head(len(smaller_df))
+        ])
+    elif len(smaller_df) > len(greater_df):
+        subset_df = pd.concat([
+            smaller_df.tail(len(greater_df)),
             greater_df
         ])
     else:
         subset_df = df
 
     if subset_df[agg_col].median() != median:
-        raise Exception('weird')
+        raise Exception('Reached wrong median')
 
     return get_index_set(subset_df)
 
 
-# WIP
 def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
-    possible_medians = _get_possible_medians(df, agg_col)
+    median_subsets = {}
+    df = df.sort_values(by=agg_col)
+    unique_values = df[agg_col].unique()
 
-    return {
-        median: _get_subset_with_median(df, agg_col, median)
-        for median in possible_medians
-    }
+    for value in unique_values:
+        median_subsets[value] = _get_median_subset_odd(df, agg_col, value)
+
+    for low, high in combinations(unique_values, 2):
+        median = (low + high) / 2
+        subset = _get_median_subset_even(df, agg_col, low, high)
+        if median not in median_subsets or len(median_subsets[median]) < len(subset):
+            median_subsets[median] = subset
+
+    return median_subsets
