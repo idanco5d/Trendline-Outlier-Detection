@@ -1,6 +1,6 @@
 from itertools import combinations
 from typing import Dict
-
+from tqdm import tqdm
 import pandas as pd
 
 
@@ -145,10 +145,10 @@ def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
     df = df.sort_values(by=agg_col)
     unique_values = df[agg_col].unique()
 
-    for value in unique_values:
+    for value in tqdm(unique_values):
         median_subsets[value] = _get_median_subset_odd(df, agg_col, value)
 
-    for low, high in combinations(unique_values, 2):
+    for low, high in tqdm(combinations(unique_values, 2)):
         median = (low + high) / 2
         subset = _get_median_subset_even(df, agg_col, low, high)
         if median not in median_subsets or len(median_subsets[median]) < len(subset):

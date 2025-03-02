@@ -7,6 +7,7 @@ if __name__ == '__main__':
     print("The parsed data is: \n", df)
 
     subset_df, removed_df = get_optimal_subset(df, group_cols, agg_col, aggregation)
+    print(f"Num removed tuples: {len(df)-len(result_df)}/{len(df)}")
 
     print("Optimal solution is: \n", subset_df)
     print("The removed tuples are: \n", removed_df)

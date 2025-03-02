@@ -13,6 +13,7 @@ def get_optimal_subset(
     # Dynamic programming table: key = agg value, value = maximal subset with agg value
     value_subsets: Dict[float, set] = {}
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
+        print(f"working on group: {group_key}")
         current_group_subsets = agg(group_df, agg_col)
         new_value_subsets: Dict[float, set] = {}
 

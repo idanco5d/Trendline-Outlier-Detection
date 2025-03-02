@@ -5,7 +5,7 @@ import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_subsets, get_max_subsets, \
-    get_min_subsets, get_sum_subsets
+    get_min_subsets, get_sum_subsets, get_median_subsets
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -13,7 +13,8 @@ AGGREGATIONS = {
     'COUNT_DISTINCT': get_count_distinct_subsets,
     'MAX': get_max_subsets,
     'MIN': get_min_subsets,
-    'SUM': get_sum_subsets
+    'SUM': get_sum_subsets,
+    'MEDIAN': get_median_subsets,
 }
 
 
