@@ -118,29 +118,6 @@ def _get_median_subset_odd(df: pd.DataFrame, agg_col: str, median: float) -> set
     return get_index_set(subset_df)
 
 
-#def _get_median_subset_even(df: pd.DataFrame, agg_col: str, low: float, high: float) -> set[int]:
-#    median = (low + high) / 2
-#    sorted_df = df.sort_values(by=agg_col, inplace=False)
-#    smaller_df = df.loc[df[agg_col].le(low)]
-#    greater_df = df.loc[df[agg_col].ge(high)]
-#
-#    if len(smaller_df) < len(greater_df):
-#        subset_df = pd.concat([
-#            smaller_df,
-#            greater_df.head(len(smaller_df))
-#        ])
-#    elif len(smaller_df) > len(greater_df):
-#        subset_df = pd.concat([
-#            smaller_df.tail(len(greater_df)),
-#            greater_df
-#        ])
-#    else:
-#        subset_df = df
-#
-#    if subset_df[agg_col].median() != median:
-#        raise Exception('Reached wrong median')
-#
-#    return get_index_set(subset_df)
     
 def _get_median_subset_even(df: pd.DataFrame, agg_col: str, low: float, high: float) -> set[int]:
     median = (low + high) / 2
