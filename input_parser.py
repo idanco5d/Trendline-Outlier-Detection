@@ -6,6 +6,7 @@ from pandas.core.groupby import DataFrameGroupBy
 
 from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_subsets, get_max_subsets, \
     get_min_subsets, get_sum_subsets, get_median_subsets
+from aggregations_pruning import get_sum_subsets_pruning
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -14,6 +15,7 @@ AGGREGATIONS = {
     'MAX': get_max_subsets,
     'MIN': get_min_subsets,
     'SUM': get_sum_subsets,
+    'SUM_PRUNING': get_sum_subsets_pruning,
     'MEDIAN': get_median_subsets,
 }
 
@@ -63,5 +65,5 @@ def group_frame_by_attributes(df: pd.DataFrame, grouping_cols: List[str], agg_co
 
 def get_aggregation_function(function_name: str) -> Callable[[pd.DataFrame, str], Dict[float, set]]:
     if function_name not in AGGREGATIONS.keys():
-        raise ValueError(f"Unrecognized aggregation function: {function_name}")
+        raise ValueError(f'Unrecognized aggregation function: {function_name}')
     return AGGREGATIONS[function_name]
