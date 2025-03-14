@@ -1,9 +1,11 @@
 from itertools import combinations
 from typing import Dict
-from tqdm import tqdm
-import pandas as pd
+
 import numpy as np
-error_epsilon = 0.00001
+import pandas as pd
+from tqdm import tqdm
+
+ERROR_EPSILON = 0.00001
 
 
 def get_index_set(df: pd.DataFrame) -> set:
@@ -112,55 +114,25 @@ def _get_median_subset_odd(df: pd.DataFrame, agg_col: str, median: float) -> set
     else:
         subset_df = df
 
-    if subset_df[agg_col].median() != median:
+    if np.abs(subset_df[agg_col].median() - median) > ERROR_EPSILON:
         raise Exception('Reached wrong median')
 
     return get_index_set(subset_df)
 
 
-    
 def _get_median_subset_even(df: pd.DataFrame, agg_col: str, low: float, high: float) -> set[int]:
     median = (low + high) / 2
-    smaller_df = df.loc[df[agg_col].lt(low)]
-    eq_to_low = df.loc[df[agg_col].eq(low)]
-    low_instance = eq_to_low.iloc[[0]]
-    eq_to_low = eq_to_low.iloc[1:]
-    
-    greater_df = df.loc[df[agg_col].gt(high)]
-    eq_to_high = df.loc[df[agg_col].eq(high)]
-    high_instance = eq_to_high.iloc[[0]]
-    eq_to_high = eq_to_high.iloc[1:]
-    
-    left = len(smaller_df) + len(eq_to_low)
-    right = len(greater_df) + len(eq_to_high)
+    smaller_df = df.loc[df[agg_col].le(low)]
+    greater_df = df.loc[df[agg_col].ge(high)]
 
-    if left < right:
-        subset_df = pd.concat([
-            smaller_df,
-            eq_to_low,
-            low_instance,
-            high_instance,
-            pd.concat([eq_to_high, greater_df]).head(left)
-        ])
-    elif left > right:
-        subset_df = pd.concat([
-            pd.concat([smaller_df, eq_to_low]).tail(right),
-            low_instance,
-            high_instance,
-            eq_to_high,
-            greater_df
-        ])
+    if len(smaller_df) < len(greater_df):
+        subset_df = pd.concat([smaller_df, greater_df.head(len(smaller_df))])
+    elif len(smaller_df) > len(greater_df):
+        subset_df = pd.concat([smaller_df.tail(len(greater_df)), greater_df])
     else:
-        subset_df = pd.concat([
-            smaller_df, 
-            eq_to_low,
-            low_instance,
-            high_instance,
-            eq_to_high,
-            greater_df
-        ])
+        subset_df = pd.concat([smaller_df, greater_df])
 
-    if np.abs(subset_df[agg_col].median() - median) > error_epsilon:
+    if np.abs(subset_df[agg_col].median() - median) > ERROR_EPSILON:
         print(subset_df[agg_col].values)
         print(len(subset_df))
         print(subset_df[agg_col].median())
