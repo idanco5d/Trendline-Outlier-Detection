@@ -19,7 +19,7 @@ The program takes 4 or more arguments:
 4. The name or names of the attributes you wish to group by. There can be more than one, but there must be at least one.
 5. An optional argument for pruning solution, this logic is only available for SUM and AVG. The command is then:
 ```
-python3 -m main SUM tests/sum/input.csv aggregator grouping_1 grouping_2 --prune 2
+python main SUM tests/sum/input.csv aggregator grouping_1 grouping_2 --prune 2
 ```
 
 
