@@ -45,7 +45,7 @@ def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
     sum_subsets = {0: set()}  # Initialize with sum 0 having 0 rows and an empty subset
 
-    for index, row in df.iterrows():
+    for index, row in tqdm(df.iterrows(), total=len(df)):
         value = row[agg_col]
         current_sum_subsets = sum_subsets.copy()  # Avoid modifying dict while iterating
 
@@ -63,7 +63,7 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
     # Dynamic programming dictionary: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
     sum_subsets = {0: {0: set()}}
 
-    for index, row in df.iterrows():
+    for index, row in tqdm(df.iterrows(), total=len(df)):
         value = row[agg_col]
         # keep a static copy of the keys because we are adding keys in the loop
         for current_sum in list(sum_subsets.keys()):
@@ -77,9 +77,9 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
                     sum_subsets[new_sum] = {}
                 if new_size not in sum_subsets[new_sum]:
                     sum_subsets[new_sum][new_size] = subset | {index}
-
+    print("processing subset sums dict")
     avg_subsets: Dict[float, set] = {}
-    for current_sum in sum_subsets:
+    for current_sum in tqdm(sum_subsets):
         for size in sum_subsets[current_sum]:
             subset = sum_subsets[current_sum][size]
             avg = 0 if size == 0 else current_sum / size
