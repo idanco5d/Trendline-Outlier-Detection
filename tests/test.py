@@ -5,7 +5,9 @@ import pandas as pd
 
 from aggregations import get_avg_subsets, get_count_distinct_subsets, get_max_subsets, \
     get_min_subsets, get_sum_subsets, get_count_subsets, get_median_subsets
+from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning
 from optimal_subset_with_constraint import get_optimal_subset
+from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
 
 GROUP_COLS = ['grouping_1', 'grouping_2']
 AGG_COL = 'aggregator'
@@ -49,6 +51,11 @@ TEST_PARAMS = {
     'median': [get_median_subsets, get_median]
 }
 
+TEST_PRUNING_PARAMS = {
+    'sum': [get_sum_subsets_pruning, get_sum],
+    'avg': [get_avg_subsets_pruning, get_avg]
+}
+
 
 def check_trend(
         df: pd.DataFrame, group_cols: List[str], agg_col: str, agg: Callable[[pd.DataFrame], pd.Series]
@@ -61,6 +68,20 @@ def check_trend(
     return agg_df.equals(sorted_df)
 
 
+def check_solution(
+        expected_df: pd.DataFrame, result_df: pd.DataFrame, agg: Callable[[pd.DataFrame], pd.Series]
+) -> None:
+    if not check_trend(expected_df, GROUP_COLS, AGG_COL, agg):
+        raise Exception('Expected does not satisfy trend')
+    if not check_trend(result_df, GROUP_COLS, AGG_COL, agg):
+        raise Exception('Solution does not satisfy trend')
+
+    if len(result_df) > len(expected_df):
+        raise Exception('Solution bigger than expected')
+    if len(result_df) < len(expected_df):
+        raise Exception('Solution smaller than expected')
+
+
 def test_agg(agg_name: str):
     subset_agg_func, agg_func = TEST_PARAMS[agg_name]
 
@@ -70,16 +91,21 @@ def test_agg(agg_name: str):
     expected_df = pd.read_csv(expected_file_name)
 
     result_df, removed_df = get_optimal_subset(input_df, GROUP_COLS, AGG_COL, subset_agg_func)
+    check_solution(expected_df, result_df, agg_func)
 
-    if not check_trend(result_df, GROUP_COLS, AGG_COL, agg_func):
-        raise Exception('Expected does not satisfy trend')
-    if not check_trend(result_df, GROUP_COLS, AGG_COL, agg_func):
-        raise Exception('Solution does not satisfy trend')
 
-    if len(result_df) > len(expected_df):
-        raise Exception('Solution bigger than expected')
-    if len(result_df) < len(expected_df):
-        raise Exception('Solution smaller than expected')
+def test_agg_pruning(agg_name: str, max_removed: int):
+    subset_agg_func, agg_func = TEST_PRUNING_PARAMS[agg_name]
+
+    input_file_name = f'{agg_name}/input.csv'
+    input_df = pd.read_csv(input_file_name)
+    expected_file_name = f'{agg_name}/expected.csv'
+    expected_df = pd.read_csv(expected_file_name)
+
+    result_df, removed_df = get_optimal_subset_pruning(
+        input_df, GROUP_COLS, AGG_COL, subset_agg_func, max_removed
+    )
+    check_solution(expected_df, result_df, agg_func)
 
 
 class TestOptimalSolution(unittest.TestCase):
@@ -98,8 +124,14 @@ class TestOptimalSolution(unittest.TestCase):
     def test_sum(self):
         test_agg('sum')
 
+    def test_sum_pruning(self):
+        test_agg_pruning('sum', max_removed=2)
+
     def test_avg(self):
         test_agg('avg')
+
+    def test_avg_pruning(self):
+        test_agg_pruning('avg', max_removed=2)
 
     def test_median(self):
         test_agg('median')
