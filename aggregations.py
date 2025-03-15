@@ -1,5 +1,5 @@
 from itertools import combinations
-from typing import Dict
+from typing import Dict, Protocol
 
 import numpy as np
 import pandas as pd
@@ -12,28 +12,33 @@ def get_index_set(df: pd.DataFrame) -> set:
     return set(df.index)
 
 
-def get_max_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+class AggregationFunction(Protocol):
+    def __call__(self, df: pd.DataFrame, col: str) -> Dict[float, set[int]]:
+        ...
+
+
+def get_max_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     return {
         value: get_index_set(df.loc[df[agg_col].le(value)])
         for value in df[agg_col].unique()
     }
 
 
-def get_min_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+def get_min_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     return {
         value: get_index_set(df.loc[df[agg_col].ge(value)])
         for value in df[agg_col].unique()
     }
 
 
-def get_count_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+def get_count_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     return {
         count: get_index_set(df.head(count))
         for count in range(1, len(df) + 1)
     }
 
 
-def get_count_distinct_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+def get_count_distinct_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     num_values = df[agg_col].nunique()
     value_counts = df[agg_col].value_counts()
     subsets = {}
@@ -43,7 +48,7 @@ def get_count_distinct_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, se
     return subsets
 
 
-def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
     sum_subsets = {0: set()}  # Initialize with sum 0 having 0 rows and an empty subset
 
@@ -61,7 +66,7 @@ def get_sum_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
     return sum_subsets
 
 
-def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
     sum_subsets = {0: {0: set()}}
 
@@ -142,7 +147,7 @@ def _get_median_subset_even(df: pd.DataFrame, agg_col: str, low: float, high: fl
     return get_index_set(subset_df)
 
 
-def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set]:
+def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     median_subsets = {}
     df = df.sort_values(by=agg_col)
     unique_values = df[agg_col].unique()

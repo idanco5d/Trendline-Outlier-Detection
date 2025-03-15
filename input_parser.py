@@ -1,13 +1,13 @@
 import argparse
 from dataclasses import dataclass
-from typing import List, Callable
+from typing import List, Union
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
 
 from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_subsets, get_max_subsets, \
-    get_min_subsets, get_sum_subsets, get_median_subsets
-from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning
+    get_min_subsets, get_sum_subsets, get_median_subsets, AggregationFunction
+from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, AggregationPruningFunction
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -29,7 +29,7 @@ class Input:
     df: pd.DataFrame
     group_cols: List[str]
     agg_col: str
-    aggregation: Callable
+    aggregation: Union[AggregationFunction, AggregationPruningFunction]
     prune: int = None
 
 
@@ -82,7 +82,9 @@ def group_frame_by_attributes(df: pd.DataFrame, grouping_cols: List[str], agg_co
     return df_grouped
 
 
-def get_aggregation_function(function_name: str, is_pruning: bool = False) -> Callable:
+def get_aggregation_function(
+        function_name: str, is_pruning: bool = False
+) -> Union[AggregationFunction, AggregationPruningFunction]:
     if is_pruning:
         if function_name not in PRUNING_AGGREGATIONS.keys():
             raise ValueError(f'Unrecognized aggregation function for pruning: {function_name}')

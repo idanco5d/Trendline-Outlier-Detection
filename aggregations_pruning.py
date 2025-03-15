@@ -1,11 +1,16 @@
-from typing import Dict
+from typing import Dict, Protocol
 
 import pandas as pd
 
 from aggregations import get_index_set
 
 
-def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set]:
+class AggregationPruningFunction(Protocol):
+    def __call__(self, df: pd.DataFrame, col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
+        ...
+
+
+def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
     sum_subsets = {df[agg_col].sum(): get_index_set(df)}
 
@@ -27,7 +32,7 @@ def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int
     return sum_subsets
 
 
-def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set]:
+def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
     sum_subsets = {df[agg_col].sum(): {len(df): get_index_set(df)}}
 

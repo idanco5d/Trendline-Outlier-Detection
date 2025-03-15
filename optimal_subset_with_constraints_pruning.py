@@ -1,13 +1,15 @@
-from typing import Dict, List, Callable, Union, Tuple
+from typing import Dict, List, Union, Tuple
 
 import pandas as pd
+
+from aggregations_pruning import AggregationPruningFunction
 
 
 def get_optimal_subset_pruning(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
         agg_col: str,
-        agg: Callable[[pd.DataFrame, str, int], Dict[float, set]],
+        agg: AggregationPruningFunction,
         max_removed: int = None
 ) -> (pd.DataFrame, pd.DataFrame):
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)

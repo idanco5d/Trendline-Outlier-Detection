@@ -1,13 +1,15 @@
-from typing import Dict, List, Callable, Union
+from typing import Dict, List, Union
 
 import pandas as pd
+
+from aggregations import AggregationFunction
 
 
 def get_optimal_subset(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
         agg_col: str,
-        agg: Callable[[pd.DataFrame, str], Dict[float, set]]
+        agg: AggregationFunction
 ) -> (pd.DataFrame, pd.DataFrame):
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     # Dynamic programming table: key = agg value, value = maximal subset with agg value
