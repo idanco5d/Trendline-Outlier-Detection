@@ -2,7 +2,8 @@ from typing import Dict, Protocol
 
 import pandas as pd
 
-from aggregations import get_index_set
+from aggregations import get_index_set, _get_median_subset_even, _get_median_subset_odd
+from tqdm import tqdm
 
 
 class AggregationPruningFunction(Protocol):
@@ -36,7 +37,7 @@ def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int
     # Dynamic programming dictionary: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
     sum_subsets = {df[agg_col].sum(): {len(df): get_index_set(df)}}
 
-    for index, row in df.iterrows():
+    for index, row in tqdm(df.iterrows(), total=len(df)):
         value = row[agg_col]
         # keep a static copy of the keys because we are adding keys in the loop
         for current_sum in list(sum_subsets.keys()):
@@ -62,3 +63,28 @@ def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int
                 avg_subsets[avg] = subset
 
     return avg_subsets
+
+
+def get_median_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
+    median_subsets = {}
+    df = df.sort_values(by=agg_col)
+    unique_values = df[agg_col].unique()
+
+    for value in tqdm(unique_values):
+        median_subsets[value] = _get_median_subset_odd(df, agg_col, value)
+    tuples = list(df[agg_col].to_dict().items()) # tuples of index and agg_col value
+    
+    
+    for low_index in tqdm(range(len(tuples))):
+        if min_subset_size is None:
+            max_distance = len(tuples) - low_index
+        else:
+            max_removed = len(tuples) - min_subset_size
+            max_distance = min(len(tuples) - low_index, max_removed+1)
+        for high_index in range(low_index + 1, low_index + max_distance): # here we prune: don't consider indices which are too far apart
+            #print(high_index, max_removed)
+            median = (tuples[low_index][1] + tuples[high_index][1])/2
+            subset = _get_median_subset_even(tuples, low_index, high_index)
+            if median not in median_subsets or len(median_subsets[median]) < len(subset):
+                median_subsets[median] = subset
+    return median_subsets

@@ -77,7 +77,7 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
             for size in list(sum_subsets[current_sum].keys()):
                 subset = sum_subsets[current_sum][size]
                 if index in subset:
-                    continue
+                    continue #why would index ever be in subset??
                 new_sum = current_sum + value
                 new_size = size + 1
                 if new_sum not in sum_subsets:
@@ -124,27 +124,31 @@ def _get_median_subset_odd(df: pd.DataFrame, agg_col: str, median: float) -> set
 
     return get_index_set(subset_df)
 
+   
+    
+def _get_median_subset_even(tuples: list[tuple], low_index: float, high_index: float) -> set[int]:
+    
+    median = (tuples[low_index][1] + tuples[high_index][1])/2
+    N = len(tuples)
 
-def _get_median_subset_even(df: pd.DataFrame, agg_col: str, low: float, high: float) -> set[int]:
-    median = (low + high) / 2
-    smaller_df = df.loc[df[agg_col].le(low)]
-    greater_df = df.loc[df[agg_col].ge(high)]
-
-    if len(smaller_df) < len(greater_df):
-        subset_df = pd.concat([smaller_df, greater_df.head(len(smaller_df))])
-    elif len(smaller_df) > len(greater_df):
-        subset_df = pd.concat([smaller_df.tail(len(greater_df)), greater_df])
+    if low_index < N - high_index - 1:
+        subset = tuples[:low_index+1] + tuples[high_index: high_index+low_index+1]
+    elif low_index > N - high_index - 1:
+        subset = tuples[low_index+high_index-N+1 : low_index+1] + tuples[high_index:]
     else:
-        subset_df = pd.concat([smaller_df, greater_df])
+        subset = tuples[:low_index + 1] + tuples[high_index:]
 
-    if np.abs(subset_df[agg_col].median() - median) > ERROR_EPSILON:
-        print(subset_df[agg_col].values)
-        print(len(subset_df))
-        print(subset_df[agg_col].median())
+    new_median = np.median([x[1] for x in subset])
+    if np.abs(new_median - median) > ERROR_EPSILON:
+        print(tuples)
+        print(low_index, high_index)
+        print(tuples[low_index], tuples[high_index])
+        print(subset)
+        print(new_median)
         print(median)
         raise Exception('Reached wrong median')
 
-    return get_index_set(subset_df)
+    return set([x[0] for x in subset])
 
 
 def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
@@ -155,10 +159,12 @@ def get_median_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
     for value in tqdm(unique_values):
         median_subsets[value] = _get_median_subset_odd(df, agg_col, value)
 
-    for low, high in tqdm(combinations(unique_values, 2)):
-        median = (low + high) / 2
-        subset = _get_median_subset_even(df, agg_col, low, high)
-        if median not in median_subsets or len(median_subsets[median]) < len(subset):
-            median_subsets[median] = subset
-
+    tuples = list(df[agg_col].to_dict().items()) # tuples of index and agg_col value
+    for low_index in tqdm(range(len(tuples))):
+        for high_index in range(low_index + 1, len(tuples)): # here we would prune
+            median = (tuples[low_index][1] + tuples[high_index][1])/2
+            subset = _get_median_subset_even(tuples, low_index, high_index)
+            if median not in median_subsets or len(median_subsets[median]) < len(subset):
+                median_subsets[median] = subset
     return median_subsets
+

@@ -2,7 +2,10 @@ from input_parser import parse_input
 from optimal_subset_with_constraint import get_optimal_subset
 from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
 
+import time
+
 if __name__ == '__main__':
+    s = time.time()
     input_data = parse_input()
     print("The parsed data is: \n", input_data.df)
 
@@ -29,3 +32,4 @@ if __name__ == '__main__':
 
     subset_df.to_csv('subset.csv')
     removed_df.to_csv('removed.csv')
+    print(f"time: {time.time()-s}")

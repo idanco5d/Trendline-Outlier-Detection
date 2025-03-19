@@ -7,7 +7,7 @@ from pandas.core.groupby import DataFrameGroupBy
 
 from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_subsets, get_max_subsets, \
     get_min_subsets, get_sum_subsets, get_median_subsets, AggregationFunction
-from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, AggregationPruningFunction
+from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, get_median_subsets_pruning, AggregationPruningFunction
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -20,7 +20,8 @@ AGGREGATIONS = {
 }
 PRUNING_AGGREGATIONS = {
     'SUM': get_sum_subsets_pruning,
-    'AVG': get_avg_subsets_pruning
+    'AVG': get_avg_subsets_pruning,
+    'MEDIAN': get_median_subsets_pruning
 }
 
 
