@@ -9,6 +9,8 @@ from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_
     get_min_subsets, get_sum_subsets, get_median_subsets, AggregationFunction
 from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, get_median_subsets_pruning, AggregationPruningFunction
 
+from aggregations_mem import AggregationMem, SumAggregation
+
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
     'COUNT': get_count_subsets,
@@ -24,14 +26,19 @@ PRUNING_AGGREGATIONS = {
     'MEDIAN': get_median_subsets_pruning
 }
 
+MEM_AGGREGATIONS = {
+    'SUM': SumAggregation
+}
+
 
 @dataclass
 class Input:
     df: pd.DataFrame
     group_cols: List[str]
     agg_col: str
-    aggregation: Union[AggregationFunction, AggregationPruningFunction]
+    aggregation: Union[AggregationFunction, AggregationPruningFunction, AggregationMem]
     prune: int = None
+    mem_opt: bool = False
 
 
 def parse_input() -> Input:
@@ -42,9 +49,10 @@ def parse_input() -> Input:
     group_cols = args.grouping_columns
     check_group_cols(df, group_cols)
     prune = args.prune
-    aggregation = get_aggregation_function(args.aggregation_function, is_pruning=prune is not None)
+    mem_opt = args.mem_opt
+    aggregation = get_aggregation_function(args.aggregation_function, is_pruning=prune is not None, is_mem_opt=mem_opt)
 
-    return Input(df=df, group_cols=group_cols, agg_col=agg_col, aggregation=aggregation, prune=prune)
+    return Input(df=df, group_cols=group_cols, agg_col=agg_col, aggregation=aggregation, prune=prune, mem_opt=mem_opt)
 
 
 def get_input_arguments() -> argparse.Namespace:
@@ -58,6 +66,8 @@ def get_input_arguments() -> argparse.Namespace:
     parser.add_argument('aggregation_column', type=str, help='Name of the aggregated column')
     parser.add_argument('grouping_columns', nargs='+', type=str, help='Names of the grouping attributes')
     parser.add_argument('--prune', type=int, metavar='N', help='Prune with an integer parameter N')
+    parser.add_argument('--mem_opt', action=argparse.BooleanOptionalAction)
+    parser.set_defaults(mem_opt=False)
 
     return parser.parse_args()
 
@@ -84,12 +94,17 @@ def group_frame_by_attributes(df: pd.DataFrame, grouping_cols: List[str], agg_co
 
 
 def get_aggregation_function(
-        function_name: str, is_pruning: bool = False
+        function_name: str, is_pruning: bool = False, is_mem_opt: bool = False
 ) -> Union[AggregationFunction, AggregationPruningFunction]:
     if is_pruning:
         if function_name not in PRUNING_AGGREGATIONS.keys():
             raise ValueError(f'Unrecognized aggregation function for pruning: {function_name}')
         return PRUNING_AGGREGATIONS[function_name]
+
+    if is_mem_opt:
+        if function_name not in MEM_AGGREGATIONS.keys():
+            raise ValueError(f'Unrecognized aggregation function for mem optimization: {function_name}')
+        return MEM_AGGREGATIONS[function_name]
 
     if function_name not in AGGREGATIONS.keys():
         raise ValueError(f'Unrecognized aggregation function: {function_name}')

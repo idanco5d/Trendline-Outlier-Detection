@@ -1,5 +1,5 @@
 from input_parser import parse_input
-from optimal_subset_with_constraint import get_optimal_subset
+from optimal_subset_with_constraint import get_optimal_subset, get_optimal_subset_mem_opt
 from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
 
 import time
@@ -16,6 +16,13 @@ if __name__ == '__main__':
             agg_col=input_data.agg_col,
             agg=input_data.aggregation,
             max_removed=input_data.prune
+        )
+    elif input_data.mem_opt:
+        subset_df, removed_df = get_optimal_subset_mem_opt(
+            df=input_data.df,
+            group_cols=input_data.group_cols,
+            agg_col=input_data.agg_col,
+            Agg=input_data.aggregation,
         )
     else:
         subset_df, removed_df = get_optimal_subset(
