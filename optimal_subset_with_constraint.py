@@ -47,19 +47,6 @@ def get_maximal_set_with_upper_bound(value_sets: Dict[float, set], upper_bound: 
     return maximal_set
 
 
-def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, set], upper_bound: float = None) -> Dict[int, tuple]:
-    # value_sets: dict of {agg_value : {group_id: (size, agg_val)}}
-    max_repair_size = 0
-    repair_sizes_and_values = {}
-    #print(f"upper bound: {upper_bound} value_sets: {value_sets}")
-    for current_value, gid_to_size_and_val in value_sets.items():
-        current_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
-        if (upper_bound is None or current_value <= upper_bound) and current_size > max_repair_size:
-            max_repair_size = current_size
-            repair_sizes_and_values = gid_to_size_and_val.copy()
-    return repair_sizes_and_values
-
-
 def get_optimal_subset_mem_opt(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
@@ -106,3 +93,16 @@ def get_optimal_subset_mem_opt(
     print(subset_df.groupby(group_cols)[agg_col].sum())
 
     return subset_df, removed_df
+
+
+def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, set], upper_bound: float = None) -> Dict[int, tuple]:
+    # value_sets: dict of {agg_value : {group_id: (size, agg_val)}}
+    max_repair_size = 0
+    repair_sizes_and_values = {}
+    #print(f"upper bound: {upper_bound} value_sets: {value_sets}")
+    for current_value, gid_to_size_and_val in value_sets.items():
+        current_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
+        if (upper_bound is None or current_value <= upper_bound) and current_size > max_repair_size:
+            max_repair_size = current_size
+            repair_sizes_and_values = gid_to_size_and_val.copy()
+    return repair_sizes_and_values
