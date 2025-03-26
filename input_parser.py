@@ -9,7 +9,7 @@ from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_
     get_min_subsets, get_sum_subsets, get_median_subsets, AggregationFunction
 from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, get_median_subsets_pruning, AggregationPruningFunction
 
-from aggregations_mem import AggregationMem, SumAggregation, AvgAggregation
+from aggregations_mem import AggregationMem, SumAggregation, AvgAggregation, AvgAggregationPruning
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -29,6 +29,10 @@ PRUNING_AGGREGATIONS = {
 MEM_AGGREGATIONS = {
     'SUM': SumAggregation,
     'AVG': AvgAggregation,
+}
+
+MEM_AND_PRUNING_AGGREGATIONS = {
+    'AVG': AvgAggregationPruning
 }
 
 
@@ -97,6 +101,11 @@ def group_frame_by_attributes(df: pd.DataFrame, grouping_cols: List[str], agg_co
 def get_aggregation_function(
         function_name: str, is_pruning: bool = False, is_mem_opt: bool = False
 ) -> Union[AggregationFunction, AggregationPruningFunction]:
+    if is_pruning and is_mem_opt:
+        if function_name not in MEM_AND_PRUNING_AGGREGATIONS.keys():
+            raise ValueError(f'Unrecognized aggregation function for pruning with mem opt: {function_name}')
+        return MEM_AND_PRUNING_AGGREGATIONS[function_name]
+
     if is_pruning:
         if function_name not in PRUNING_AGGREGATIONS.keys():
             raise ValueError(f'Unrecognized aggregation function for pruning: {function_name}')
