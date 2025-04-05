@@ -15,7 +15,8 @@ if __name__ == '__main__':
             group_cols=input_data.group_cols,
             agg_col=input_data.agg_col,
             Agg=input_data.aggregation,
-            max_removed=input_data.prune
+            max_removed=input_data.prune,
+            time_cutoff_seconds=input_data.time_cutoff_seconds,
         )
     elif input_data.prune is not None:
         subset_df, removed_df = get_optimal_subset_pruning(
@@ -31,6 +32,7 @@ if __name__ == '__main__':
             group_cols=input_data.group_cols,
             agg_col=input_data.agg_col,
             Agg=input_data.aggregation,
+            time_cutoff_seconds=input_data.time_cutoff_seconds,
         )
     else:
         subset_df, removed_df = get_optimal_subset(
@@ -45,6 +47,6 @@ if __name__ == '__main__':
     print("Optimal solution is: \n", subset_df)
     print("The removed tuples are: \n", removed_df)
 
-    subset_df.to_csv('subset.csv')
-    removed_df.to_csv('removed.csv')
+    #subset_df.to_csv(os.path.join(args.output_folder, f"dp_result-{input_data.orig_fname}.csv"), index=True)
+    removed_df.to_csv(os.path.join(args.output_folder, f"dp_removed-{input_data.orig_fname}.csv"), index=True)
     print(f"time: {time.time()-s}")

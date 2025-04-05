@@ -1,5 +1,5 @@
 from typing import Dict, List, Union
-
+import sys
 import pandas as pd
 from tqdm import tqdm
 
@@ -52,8 +52,10 @@ def get_optimal_subset_mem_opt(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
         agg_col: str,
-        Agg: AggregationMem
+        Agg: AggregationMem,
+        time_cutoff_seconds: int = None,
 ) -> (pd.DataFrame, pd.DataFrame):
+    print("mem opt")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     print("agg result before removal:")
     print(df.groupby(group_cols)[agg_col].sum())
@@ -67,10 +69,23 @@ def get_optimal_subset_mem_opt(
         current_group_subsets = agg.compute_max_subset_sizes(group_df, agg_col) # dict of agg_val: maximal subset size
         new_value_subsets: Dict[float, Dict[int, tuple]] = {} # agg_val of current ri -> {group_id -> (size, agg_val)}
 
-        for value, subset_size in current_group_subsets.items():
-            previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(value_subsets, value)
-            previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
-            new_value_subsets[value] = previous_groups_subset_sizes_and_values
+        iterations_over_time_limit = 0
+        with tqdm(current_group_subsets.items()) as t:
+            for value, subset_size in t:
+                d = t.format_dict
+                if d['rate'] is not None:
+                    remaining_time_estimate = (d['total'] - d['n'])/d['rate']
+                    if time_cutoff_seconds is not None and remaining_time_estimate > time_cutoff_seconds:
+                        iterations_over_time_limit += 1
+                if iterations_over_time_limit > 5000:
+                    print(d)
+                    print(f"estimated time left is too high: {remaining_time_estimate/60} minutes, exiting")
+                    sys.exit()
+
+        #for value, subset_size in current_group_subsets.items():
+                previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(value_subsets, value)
+                previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
+                new_value_subsets[value] = previous_groups_subset_sizes_and_values
 
         for value in value_subsets.keys():
             if value not in new_value_subsets.keys():
@@ -102,10 +117,11 @@ def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, Dict[int, tup
     repair_sizes_and_values = {}
     #print(f"upper bound: {upper_bound} value_sets: {value_sets}")
     for current_value, gid_to_size_and_val in value_sets.items():
-        current_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
-        if (upper_bound is None or current_value <= upper_bound) and current_size > max_repair_size:
-            max_repair_size = current_size
-            repair_sizes_and_values = gid_to_size_and_val.copy()
+        if upper_bound is None or current_value <= upper_bound:
+            current_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
+            if current_size > max_repair_size:
+                max_repair_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
+                repair_sizes_and_values = gid_to_size_and_val.copy()
     return repair_sizes_and_values
 
 
@@ -114,8 +130,10 @@ def get_optimal_subset_pruning_mem_opt(
         group_cols: Union[str, List[str]],
         agg_col: str,
         Agg: AggregationMem,
-        max_removed: int = None
+        max_removed: int = None,
+        time_cutoff_seconds: int = None
 ) -> (pd.DataFrame, pd.DataFrame):
+    print("mem opt + pruning")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     print("agg result before removal:")
     print(df.groupby(group_cols)[agg_col].mean())
@@ -135,27 +153,42 @@ def get_optimal_subset_pruning_mem_opt(
         agg = Agg()
         group_to_agg[group_key] = agg  # save it for later
         current_group_subsets = agg.compute_max_subset_sizes(group_df, agg_col, min_subset_size)  # dict of agg_val: maximal subset size
+        
+        print(f"current_group_subsets len: {len(current_group_subsets)} and size: {sys.getsizeof(current_group_subsets)}")
+        print(f"size of agg: {sys.getsizeof(agg.subset_sizes)}")
         new_value_subsets: Dict[float, Dict[int, tuple]] = {}  # agg_val of current ri -> {group_id -> (size, agg_val)}
 
-        for value, subset_size in tqdm(current_group_subsets.items()):
-            previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(
-                value_subsets, value
-            )
-            if len(previous_groups_subset_sizes_and_values) == 0:
-                previous_removed_count = 0
-            else:
-                previous_removed_count = sum([group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
-                                              for gid in previous_groups_subset_sizes_and_values])
-            new_removed_count = previous_removed_count + len(group_df) - subset_size
-            if new_removed_count <= max_removed:
-                previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
-                new_value_subsets[value] = previous_groups_subset_sizes_and_values
+        iterations_over_time_limit = 0
+        with tqdm(current_group_subsets.items()) as t:
+            for value, subset_size in t:
+                d = t.format_dict
+                if d['rate'] is not None:
+                    remaining_time_estimate = (d['total'] - d['n'])/d['rate']
+                    if time_cutoff_seconds is not None and remaining_time_estimate > time_cutoff_seconds:
+                        iterations_over_time_limit += 1
+                if iterations_over_time_limit > 5000:
+                    print(d)
+                    print(f"estimated time left is too high: {remaining_time_estimate/60} minutes, exiting")
+                    sys.exit()
+                previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(
+                    value_subsets, value
+                )
+                if len(previous_groups_subset_sizes_and_values) == 0:
+                    previous_removed_count = 0
+                else:
+                    previous_removed_count = sum([group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
+                                                  for gid in previous_groups_subset_sizes_and_values])
+                new_removed_count = previous_removed_count + len(group_df) - subset_size
+                if new_removed_count <= max_removed:
+                    previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
+                    new_value_subsets[value] = previous_groups_subset_sizes_and_values
 
         for value in value_subsets.keys():
             if value not in new_value_subsets.keys():
                 new_value_subsets[value] = value_subsets[value]
 
         value_subsets = new_value_subsets
+        print(f"size of value subsets: {sys.getsizeof(value_subsets)}")
     gid_to_size_and_val = get_maximal_set_sizes_with_upper_bound(value_subsets)
     optimal_subset = []
     for gid in gid_to_size_and_val.keys():

@@ -1,4 +1,5 @@
 import argparse
+import os
 from dataclasses import dataclass
 from typing import List, Union
 
@@ -42,13 +43,17 @@ class Input:
     group_cols: List[str]
     agg_col: str
     aggregation: Union[AggregationFunction, AggregationPruningFunction, AggregationMem]
+    output_folder: str
+    orig_fname: str
     prune: int = None
     mem_opt: bool = False
+    time_cutoff_seconds: int = None
 
 
 def parse_input() -> Input:
     args = get_input_arguments()
     df = pd.read_csv(args.dataset_file_name)
+    orig_fname = os.path.basename(args.dataset_file_name)
     agg_col = args.aggregation_column
     check_agg_col(df, agg_col)
     group_cols = args.grouping_columns
@@ -56,8 +61,10 @@ def parse_input() -> Input:
     prune = args.prune
     mem_opt = args.mem_opt
     aggregation = get_aggregation_function(args.aggregation_function, is_pruning=prune is not None, is_mem_opt=mem_opt)
-
-    return Input(df=df, group_cols=group_cols, agg_col=agg_col, aggregation=aggregation, prune=prune, mem_opt=mem_opt)
+    time_cutoff_seconds = args.cutoff_seconds
+    return Input(df=df, group_cols=group_cols, agg_col=agg_col, aggregation=aggregation, prune=prune,
+                 mem_opt=mem_opt, time_cutoff_seconds=time_cutoff_seconds, 
+                 output_folder=args.output_folder, orig_fname=orig_fname)
 
 
 def get_input_arguments() -> argparse.Namespace:
@@ -73,6 +80,8 @@ def get_input_arguments() -> argparse.Namespace:
     parser.add_argument('--prune', type=int, metavar='N', help='Prune with an integer parameter N')
     parser.add_argument('--mem_opt', action=argparse.BooleanOptionalAction)
     parser.set_defaults(mem_opt=False)
+    parser.add_argument('--cutoff_seconds', type=int, metavar='N', help='time cutoff in seconds')
+    parser.add_argument('--output_folder', type=str, help='path to save results')
 
     return parser.parse_args()
 
