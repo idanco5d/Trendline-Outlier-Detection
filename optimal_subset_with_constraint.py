@@ -2,6 +2,7 @@ from typing import Dict, List, Union
 import sys
 import pandas as pd
 from tqdm import tqdm
+from multiprocessing import Pool, cpu_count
 
 from aggregations import AggregationFunction
 from aggregations_mem import AggregationMem
@@ -125,13 +126,33 @@ def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, Dict[int, tup
     return repair_sizes_and_values
 
 
+def process_subset_item(args):
+    value, subset_size, value_subsets, group_key, group_df_len, group_to_orig_size, max_removed = args
+    result = None
+    previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(value_subsets, value)
+    if len(previous_groups_subset_sizes_and_values) == 0:
+        previous_removed_count = 0
+    else:
+        previous_removed_count = sum(
+            [group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
+             for gid in previous_groups_subset_sizes_and_values]
+        )
+    new_removed_count = previous_removed_count + group_df_len - subset_size
+    if new_removed_count <= max_removed:
+        previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
+        result = (value, previous_groups_subset_sizes_and_values)
+    return result
+
+
+
 def get_optimal_subset_pruning_mem_opt(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
         agg_col: str,
         Agg: AggregationMem,
         max_removed: int = None,
-        time_cutoff_seconds: int = None
+        time_cutoff_seconds: int = None,
+        parallelize: bool = False,
 ) -> (pd.DataFrame, pd.DataFrame):
     print("mem opt + pruning")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
@@ -157,31 +178,53 @@ def get_optimal_subset_pruning_mem_opt(
         print(f"current_group_subsets len: {len(current_group_subsets)} and size: {sys.getsizeof(current_group_subsets)}")
         print(f"size of agg: {sys.getsizeof(agg.subset_sizes)}")
         new_value_subsets: Dict[float, Dict[int, tuple]] = {}  # agg_val of current ri -> {group_id -> (size, agg_val)}
+        
+        
+        if parallelize:
+            # Use multiprocessing for parallel processing of current_group_subsets
+            print(f"going to parallelize now, cpu count: {cpu_count()}")
+            pool_args = [
+                (value, subset_size, value_subsets, group_key, len(group_df), group_to_orig_size, max_removed)
+                for value, subset_size in current_group_subsets.items()
+            ]
+            #num_workers = cpu_count()
+            num_workers = 10
+            with Pool(processes=num_workers) as pool:
+                results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
 
-        iterations_over_time_limit = 0
-        with tqdm(current_group_subsets.items()) as t:
-            for value, subset_size in t:
-                d = t.format_dict
-                if d['rate'] is not None:
-                    remaining_time_estimate = (d['total'] - d['n'])/d['rate']
-                    if time_cutoff_seconds is not None and remaining_time_estimate > time_cutoff_seconds:
-                        iterations_over_time_limit += 1
-                if iterations_over_time_limit > 5000:
-                    print(d)
-                    print(f"estimated time left is too high: {remaining_time_estimate/60} minutes, exiting")
-                    sys.exit()
-                previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(
-                    value_subsets, value
-                )
-                if len(previous_groups_subset_sizes_and_values) == 0:
-                    previous_removed_count = 0
-                else:
-                    previous_removed_count = sum([group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
-                                                  for gid in previous_groups_subset_sizes_and_values])
-                new_removed_count = previous_removed_count + len(group_df) - subset_size
-                if new_removed_count <= max_removed:
-                    previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
-                    new_value_subsets[value] = previous_groups_subset_sizes_and_values
+            new_value_subsets: Dict[float, Dict[int, tuple]] = {}
+
+            for result in results:
+                if result is not None:
+                    value, subset_map = result
+                    new_value_subsets[value] = subset_map
+            
+        else:
+            print("Not parallelizing")
+            iterations_over_time_limit = 0
+            with tqdm(current_group_subsets.items()) as t:
+                for value, subset_size in t:
+                    d = t.format_dict
+                    if d['rate'] is not None:
+                        remaining_time_estimate = (d['total'] - d['n'])/d['rate']
+                        if time_cutoff_seconds is not None and remaining_time_estimate > time_cutoff_seconds:
+                            iterations_over_time_limit += 1
+                    if iterations_over_time_limit > 5000:
+                        print(d)
+                        print(f"estimated time left is too high: {remaining_time_estimate/60} minutes, exiting")
+                        sys.exit()
+                    previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(
+                        value_subsets, value
+                    )
+                    if len(previous_groups_subset_sizes_and_values) == 0:
+                        previous_removed_count = 0
+                    else:
+                        previous_removed_count = sum([group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
+                                                    for gid in previous_groups_subset_sizes_and_values])
+                    new_removed_count = previous_removed_count + len(group_df) - subset_size
+                    if new_removed_count <= max_removed:
+                        previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
+                        new_value_subsets[value] = previous_groups_subset_sizes_and_values
 
         for value in value_subsets.keys():
             if value not in new_value_subsets.keys():
