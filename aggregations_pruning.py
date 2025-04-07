@@ -66,17 +66,25 @@ def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int
     return avg_subsets
 
 
-def process_low_index(tuples, low_index, min_subset_size):
+shared_tuples = None
+
+def init_worker(tuples_):
+    global shared_tuples
+    shared_tuples = tuples_
+
+def process_low_index(args):
+    global shared_tuples
+    low_index, min_subset_size = args
     medians_and_subsets = []
     if min_subset_size is None:
-        max_distance = len(tuples) - low_index
+        max_distance = len(shared_tuples) - low_index
     else:
-        max_removed = len(tuples) - min_subset_size
-        max_distance = min(len(tuples) - low_index, max_removed + 1)
+        max_removed = len(shared_tuples) - min_subset_size
+        max_distance = min(len(shared_tuples) - low_index, max_removed + 1)
     for high_index in range(low_index + 1,
                             low_index + max_distance):  # here we prune: don't consider indices which are too far apart
-        median = (tuples[low_index][1] + tuples[high_index][1]) / 2
-        subset = _get_median_subset_even(tuples, low_index, high_index)
+        median = (shared_tuples[low_index][1] + shared_tuples[high_index][1]) / 2
+        subset = _get_median_subset_even(shared_tuples, low_index, high_index)
         medians_and_subsets.append((median, subset))
     return medians_and_subsets
 
@@ -92,10 +100,11 @@ def get_median_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: 
     tuples = list(df[agg_col].to_dict().items()) # tuples of index and agg_col value
 
     if parallelize:
-        pool_args = [(tuples, low_index, min_subset_size) for low_index in range(len(tuples))]
+        pool_args = [(low_index, min_subset_size) for low_index in range(len(tuples))]
         max_workers = min(20, cpu_count())
-        with Pool(processes=max_workers) as pool:
+        with Pool(processes=max_workers, initializer=init_worker, initargs=(tuples,)) as pool:
             results = list(tqdm(pool.imap(process_low_index, pool_args), total=len(pool_args)))
+    
         for medians_and_subsets in results:
             if medians_and_subsets is not None:
                 for med, sub in medians_and_subsets:
