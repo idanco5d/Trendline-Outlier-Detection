@@ -1,3 +1,4 @@
+from multiprocessing import cpu_count, Pool
 from typing import Dict, Protocol
 
 import pandas as pd
@@ -7,11 +8,11 @@ from tqdm import tqdm
 
 
 class AggregationPruningFunction(Protocol):
-    def __call__(self, df: pd.DataFrame, col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
+    def __call__(self, df: pd.DataFrame, col: str, min_subset_size: int = None, parallelize: bool = False) -> Dict[float, set[int]]:
         ...
 
 
-def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
+def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None, parallelize: bool = False) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
     sum_subsets = {df[agg_col].sum(): get_index_set(df)}
 
@@ -33,7 +34,7 @@ def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int
     return sum_subsets
 
 
-def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
+def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None, parallelize: bool = False) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: sum_subsets[s][k] is a subset with sum s and size k, if such subset exists
     sum_subsets = {df[agg_col].sum(): {len(df): get_index_set(df)}}
 
@@ -65,7 +66,23 @@ def get_avg_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int
     return avg_subsets
 
 
-def get_median_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, set[int]]:
+def process_low_index(tuples, low_index, min_subset_size):
+    medians_and_subsets = []
+    if min_subset_size is None:
+        max_distance = len(tuples) - low_index
+    else:
+        max_removed = len(tuples) - min_subset_size
+        max_distance = min(len(tuples) - low_index, max_removed + 1)
+    for high_index in range(low_index + 1,
+                            low_index + max_distance):  # here we prune: don't consider indices which are too far apart
+        median = (tuples[low_index][1] + tuples[high_index][1]) / 2
+        subset = _get_median_subset_even(tuples, low_index, high_index)
+        medians_and_subsets.append((median, subset))
+    return medians_and_subsets
+
+
+def get_median_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None,
+                               parallelize: bool = False) -> Dict[float, set[int]]:
     median_subsets = {}
     df = df.sort_values(by=agg_col)
     unique_values = df[agg_col].unique()
@@ -73,18 +90,28 @@ def get_median_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: 
     for value in tqdm(unique_values):
         median_subsets[value] = _get_median_subset_odd(df, agg_col, value)
     tuples = list(df[agg_col].to_dict().items()) # tuples of index and agg_col value
-    
-    
-    for low_index in tqdm(range(len(tuples))):
-        if min_subset_size is None:
-            max_distance = len(tuples) - low_index
-        else:
-            max_removed = len(tuples) - min_subset_size
-            max_distance = min(len(tuples) - low_index, max_removed+1)
-        for high_index in range(low_index + 1, low_index + max_distance): # here we prune: don't consider indices which are too far apart
-            #print(high_index, max_removed)
-            median = (tuples[low_index][1] + tuples[high_index][1])/2
-            subset = _get_median_subset_even(tuples, low_index, high_index)
-            if median not in median_subsets or len(median_subsets[median]) < len(subset):
-                median_subsets[median] = subset
+
+    if parallelize:
+        pool_args = [(tuples, low_index, min_subset_size) for low_index in range(len(tuples))]
+        max_workers = min(20, cpu_count())
+        with Pool(processes=max_workers) as pool:
+            results = list(tqdm(pool.imap(process_low_index, pool_args), total=len(pool_args)))
+        for medians_and_subsets in results:
+            if medians_and_subsets is not None:
+                for med, sub in medians_and_subsets:
+                    if med not in median_subsets or len(median_subsets[med]) < len(sub):
+                        median_subsets[med] = sub
+    else:  # serial execution
+        for low_index in tqdm(range(len(tuples))):
+            if min_subset_size is None:
+                max_distance = len(tuples) - low_index
+            else:
+                max_removed = len(tuples) - min_subset_size
+                max_distance = min(len(tuples) - low_index, max_removed+1)
+            for high_index in range(low_index + 1, low_index + max_distance): # here we prune: don't consider indices which are too far apart
+                #print(high_index, max_removed)
+                median = (tuples[low_index][1] + tuples[high_index][1])/2
+                subset = _get_median_subset_even(tuples, low_index, high_index)
+                if median not in median_subsets or len(median_subsets[median]) < len(subset):
+                    median_subsets[median] = subset
     return median_subsets

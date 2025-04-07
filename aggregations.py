@@ -124,17 +124,15 @@ def _get_median_subset_odd(df: pd.DataFrame, agg_col: str, median: float) -> set
 
     return get_index_set(subset_df)
 
-   
-    
+
 def _get_median_subset_even(tuples: list[tuple], low_index: float, high_index: float) -> set[int]:
-    
     median = (tuples[low_index][1] + tuples[high_index][1])/2
     N = len(tuples)
 
     if low_index < N - high_index - 1:
         subset = tuples[:low_index+1] + tuples[high_index: high_index+low_index+1]
     elif low_index > N - high_index - 1:
-        subset = tuples[low_index+high_index-N+1 : low_index+1] + tuples[high_index:]
+        subset = tuples[low_index+high_index-N+1: low_index+1] + tuples[high_index:]
     else:
         subset = tuples[:low_index + 1] + tuples[high_index:]
 

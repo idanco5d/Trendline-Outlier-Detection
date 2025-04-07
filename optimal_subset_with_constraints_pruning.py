@@ -10,7 +10,8 @@ def get_optimal_subset_pruning(
         group_cols: Union[str, List[str]],
         agg_col: str,
         agg: AggregationPruningFunction,
-        max_removed: int = None
+        max_removed: int = None,
+        parallelize: bool = False
 ) -> (pd.DataFrame, pd.DataFrame):
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     # Dynamic programming table:
@@ -21,7 +22,7 @@ def get_optimal_subset_pruning(
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
         min_subset_size = len(group_df) - max_removed if max_removed is not None else None
-        current_group_subsets = agg(group_df, agg_col, min_subset_size)
+        current_group_subsets = agg(group_df, agg_col, min_subset_size, parallelize)
         new_value_subsets: Dict[float, Tuple[set, int]] = {}
 
         for value, subset in current_group_subsets.items():

@@ -25,7 +25,8 @@ if __name__ == '__main__':
             group_cols=input_data.group_cols,
             agg_col=input_data.agg_col,
             agg=input_data.aggregation,
-            max_removed=input_data.prune
+            max_removed=input_data.prune,
+            parallelize=False,
         )
     elif input_data.mem_opt:
         subset_df, removed_df = get_optimal_subset_mem_opt(
