@@ -3,9 +3,17 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+#import concurrent.futures
 
 from aggregations import AggregationFunction
 from aggregations_mem import AggregationMem
+
+
+_shared_value_subsets = None
+
+def init_worker(value_subsets_data):
+    global _shared_value_subsets
+    _shared_value_subsets = value_subsets_data
 
 
 def get_optimal_subset(
@@ -127,22 +135,27 @@ def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, Dict[int, tup
 
 
 def process_subset_item(args):
-    value, subset_size, value_subsets, group_key, group_df_len, group_to_orig_size, max_removed = args
-    result = None
+    value, subset_size, group_key, group_size, group_to_orig_size, max_removed = args
+
+    global _shared_value_subsets
+    value_subsets = _shared_value_subsets
+
     previous_groups_subset_sizes_and_values = get_maximal_set_sizes_with_upper_bound(value_subsets, value)
-    if len(previous_groups_subset_sizes_and_values) == 0:
+
+    if not previous_groups_subset_sizes_and_values:
         previous_removed_count = 0
     else:
         previous_removed_count = sum(
-            [group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
-             for gid in previous_groups_subset_sizes_and_values]
+            group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
+            for gid in previous_groups_subset_sizes_and_values
         )
-    new_removed_count = previous_removed_count + group_df_len - subset_size
+
+    new_removed_count = previous_removed_count + group_size - subset_size
+
     if new_removed_count <= max_removed:
         previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
-        result = (value, previous_groups_subset_sizes_and_values)
-    return result
-
+        return value, previous_groups_subset_sizes_and_values
+    return None
 
 
 def get_optimal_subset_pruning_mem_opt(
@@ -181,18 +194,34 @@ def get_optimal_subset_pruning_mem_opt(
         
         
         if parallelize:
-            # Use multiprocessing for parallel processing of current_group_subsets
-            print(f"going to parallelize now, cpu count: {cpu_count()}")
-            pool_args = [
-                (value, subset_size, value_subsets, group_key, len(group_df), group_to_orig_size, max_removed)
-                for value, subset_size in current_group_subsets.items()
-            ]
-            #num_workers = cpu_count()
-            num_workers = 10
-            with Pool(processes=num_workers) as pool:
+            pool_args = [(value, subset_size, group_key, len(group_df), group_to_orig_size, max_removed)
+                          for value, subset_size in current_group_subsets.items()]
+            with Pool(processes=cpu_count(), initializer=init_worker, initargs=(value_subsets,)) as pool:
                 results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
 
-            new_value_subsets: Dict[float, Dict[int, tuple]] = {}
+            # Version 2
+            #print(f"going to parallelize now, cpu count: {cpu_count()}")
+            #pool_args = [
+            #        (value, subset_size, value_subsets, group_key, len(group_df), group_to_orig_size, max_removed)
+            #        for value, subset_size in current_group_subsets.items()
+            #        ]
+
+            #new_value_subsets: Dict[float, Dict[int, tuple]] = {}
+
+            #with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            #    results = list(tqdm(executor.map(process_subset_item, pool_args), total=len(pool_args)))
+
+            #Version 1
+            # Use multiprocessing for parallel processing of current_group_subsets
+            
+            #pool_args = [
+            #    (value, subset_size, value_subsets, group_key, len(group_df), group_to_orig_size, max_removed)
+            #    for value, subset_size in current_group_subsets.items()
+            #]
+            #num_workers = cpu_count()
+            #num_workers = 10
+            #with Pool(processes=num_workers) as pool:
+            #    results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
 
             for result in results:
                 if result is not None:
