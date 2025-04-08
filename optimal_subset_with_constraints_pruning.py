@@ -38,7 +38,21 @@ def get_optimal_subset_pruning(
             if value not in new_value_subsets.keys():
                 new_value_subsets[value] = value_subsets[value]
 
-        value_subsets = new_value_subsets
+        # More pruning!
+        # If we have v1, v2 s.t. v1<=v2 and size(value_subsets[v1])>=size(value_subsets[v2]), no need to save v2.
+        # We would always prefer the solution for v1.
+        max_keep_size = 0
+        pruned_value_subsets = {}
+        for x in sorted(new_value_subsets.keys()):
+            subset, removed_count = new_value_subsets[x]
+            keep_size = len(subset)
+            if keep_size > max_keep_size:
+                pruned_value_subsets[x] = subset
+                max_keep_size = keep_size
+
+        value_subsets = pruned_value_subsets
+
+        # value_subsets = new_value_subsets
 
     optimal_subset = list(get_maximal_set_with_upper_bound(value_subsets)[0])
     subset_df = df.iloc[optimal_subset]

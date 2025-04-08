@@ -38,7 +38,21 @@ def get_optimal_subset(
             if value not in new_value_subsets.keys():
                 new_value_subsets[value] = value_subsets[value]
 
-        value_subsets = new_value_subsets
+        # More pruning!
+        # If we have v1, v2 s.t. v1<=v2 and size(value_subsets[v1])>=size(value_subsets[v2]), no need to save v2.
+        # We would always prefer the solution for v1.
+        max_keep_size = 0
+        pruned_value_subsets = {}
+        for x in sorted(new_value_subsets.keys()):
+            subset = new_value_subsets[x]
+            keep_size = len(subset)
+            if keep_size > max_keep_size:
+                pruned_value_subsets[x] = subset
+                max_keep_size = keep_size
+
+        value_subsets = pruned_value_subsets
+
+        #value_subsets = new_value_subsets
 
     optimal_subset = list(get_maximal_set_with_upper_bound(value_subsets))
     subset_df = df.iloc[optimal_subset]
@@ -75,8 +89,8 @@ def get_optimal_subset_mem_opt(
         print(f"working on group: {group_key}")
         agg = Agg()
         group_to_agg[group_key] = agg # save it for later
-        current_group_subsets = agg.compute_max_subset_sizes(group_df, agg_col) # dict of agg_val: maximal subset size
-        new_value_subsets: Dict[float, Dict[int, tuple]] = {} # agg_val of current ri -> {group_id -> (size, agg_val)}
+        current_group_subsets = agg.compute_max_subset_sizes(group_df, agg_col)  # dict of agg_val: maximal subset size
+        new_value_subsets: Dict[float, Dict[int, tuple]] = {}  # agg_val of current ri -> {group_id -> (size, agg_val)}
 
         iterations_over_time_limit = 0
         with tqdm(current_group_subsets.items()) as t:
@@ -100,7 +114,21 @@ def get_optimal_subset_mem_opt(
             if value not in new_value_subsets.keys():
                 new_value_subsets[value] = value_subsets[value]
 
-        value_subsets = new_value_subsets.copy()
+        # More pruning!
+        # If we have v1, v2 s.t. v1<=v2 and size(value_subsets[v1])>=size(value_subsets[v2]), no need to save v2.
+        # We would always prefer the solution for v1.
+        max_keep_size = 0
+        pruned_value_subsets = {}
+        for x in sorted(new_value_subsets.keys()):
+            groups_subset_sizes_and_values = new_value_subsets[x]
+            keep_size = sum([groups_subset_sizes_and_values[gid][0] for gid in groups_subset_sizes_and_values])
+            if keep_size > max_keep_size:
+                pruned_value_subsets[x] = groups_subset_sizes_and_values
+                max_keep_size = keep_size
+
+        value_subsets = pruned_value_subsets
+
+        #value_subsets = new_value_subsets.copy()
 
     # Next - get the set of indices from the group ids, agg values and sizes.
     gid_to_size_and_val = get_maximal_set_sizes_with_upper_bound(value_subsets)
@@ -266,10 +294,7 @@ def get_optimal_subset_pruning_mem_opt(
         pruned_value_subsets = {}
         for x in sorted(new_value_subsets.keys()):
             groups_subset_sizes_and_values = new_value_subsets[x]
-            # TODO is this calculation correct???
             keep_size = sum([groups_subset_sizes_and_values[gid][0] for gid in groups_subset_sizes_and_values])
-
-            # TODO do I need to save one groups_subset_sizes_and_values for each possible keep_size? (still O(n))
             if keep_size > max_keep_size:
                 pruned_value_subsets[x] = groups_subset_sizes_and_values
                 max_keep_size = keep_size
