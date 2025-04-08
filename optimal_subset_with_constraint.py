@@ -191,8 +191,7 @@ def get_optimal_subset_pruning_mem_opt(
         print(f"current_group_subsets len: {len(current_group_subsets)} and size: {sys.getsizeof(current_group_subsets)}")
         print(f"size of agg: {sys.getsizeof(agg.subset_sizes)}")
         new_value_subsets: Dict[float, Dict[int, tuple]] = {}  # agg_val of current ri -> {group_id -> (size, agg_val)}
-        
-        
+
         if parallelize:
             pool_args = [(value, subset_size, group_key, len(group_df), group_to_orig_size, max_removed)
                           for value, subset_size in current_group_subsets.items()]
@@ -249,7 +248,7 @@ def get_optimal_subset_pruning_mem_opt(
                         previous_removed_count = 0
                     else:
                         previous_removed_count = sum([group_to_orig_size[gid] - previous_groups_subset_sizes_and_values[gid][0]
-                                                    for gid in previous_groups_subset_sizes_and_values])
+                                                      for gid in previous_groups_subset_sizes_and_values])
                     new_removed_count = previous_removed_count + len(group_df) - subset_size
                     if new_removed_count <= max_removed:
                         previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
@@ -259,8 +258,24 @@ def get_optimal_subset_pruning_mem_opt(
             if value not in new_value_subsets.keys():
                 new_value_subsets[value] = value_subsets[value]
 
-        value_subsets = new_value_subsets
-        print(f"size of value subsets: {sys.getsizeof(value_subsets)}")
+        # More pruning!
+        # If we have v1, v2 s.t. v1<=v2 and size(value_subsets[v1])>=size(value_subsets[v2]), no need to save v2.
+        # We would always prefer the solution for v1.
+        max_keep_size = 0
+        pruned_value_subsets = {}
+        for x in sorted(new_value_subsets.keys()):
+            groups_subset_sizes_and_values = new_value_subsets[x]
+            # TODO is this calculation correct???
+            keep_size = sum([groups_subset_sizes_and_values[gid][0] for gid in groups_subset_sizes_and_values])
+
+            # TODO do I need to save one groups_subset_sizes_and_values for each possible keep_size? (still O(n))
+            if keep_size > max_keep_size:
+                pruned_value_subsets[x] = groups_subset_sizes_and_values
+                max_keep_size = keep_size
+
+        value_subsets = pruned_value_subsets
+        #value_subsets = new_value_subsets
+        print(f"len value_subsets: {len(value_subsets)} size of value subsets: {sys.getsizeof(value_subsets)}")
     gid_to_size_and_val = get_maximal_set_sizes_with_upper_bound(value_subsets)
     optimal_subset = []
     for gid in gid_to_size_and_val.keys():
