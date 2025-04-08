@@ -195,7 +195,8 @@ def get_optimal_subset_pruning_mem_opt(
         if parallelize:
             pool_args = [(value, subset_size, group_key, len(group_df), group_to_orig_size, max_removed)
                           for value, subset_size in current_group_subsets.items()]
-            with Pool(processes=cpu_count(), initializer=init_worker, initargs=(value_subsets,)) as pool:
+            num_workers = min(20, cpu_count())
+            with Pool(processes=num_workers, initializer=init_worker, initargs=(value_subsets,)) as pool:
                 results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
 
             # Version 2
