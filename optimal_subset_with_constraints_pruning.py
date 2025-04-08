@@ -47,7 +47,7 @@ def get_optimal_subset_pruning(
             subset, removed_count = new_value_subsets[x]
             keep_size = len(subset)
             if keep_size > max_keep_size:
-                pruned_value_subsets[x] = subset
+                pruned_value_subsets[x] = (subset, removed_count)
                 max_keep_size = keep_size
 
         value_subsets = pruned_value_subsets

@@ -227,30 +227,6 @@ def get_optimal_subset_pruning_mem_opt(
             with Pool(processes=num_workers, initializer=init_worker, initargs=(value_subsets,)) as pool:
                 results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
 
-            # Version 2
-            #print(f"going to parallelize now, cpu count: {cpu_count()}")
-            #pool_args = [
-            #        (value, subset_size, value_subsets, group_key, len(group_df), group_to_orig_size, max_removed)
-            #        for value, subset_size in current_group_subsets.items()
-            #        ]
-
-            #new_value_subsets: Dict[float, Dict[int, tuple]] = {}
-
-            #with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-            #    results = list(tqdm(executor.map(process_subset_item, pool_args), total=len(pool_args)))
-
-            #Version 1
-            # Use multiprocessing for parallel processing of current_group_subsets
-            
-            #pool_args = [
-            #    (value, subset_size, value_subsets, group_key, len(group_df), group_to_orig_size, max_removed)
-            #    for value, subset_size in current_group_subsets.items()
-            #]
-            #num_workers = cpu_count()
-            #num_workers = 10
-            #with Pool(processes=num_workers) as pool:
-            #    results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
-
             for result in results:
                 if result is not None:
                     value, subset_map = result
