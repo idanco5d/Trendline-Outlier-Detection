@@ -66,6 +66,9 @@ def get_maximal_set_with_upper_bound(value_sets: SortedDict[float, set], upper_b
     maximal_set = set()
     if upper_bound is not None:
         index = value_sets.bisect_left(upper_bound)
+        # should include keys[index]? yes, if it is still <= upper bound (i.e., equal to it)
+        if value_sets.keys()[index] <= upper_bound:
+            index += 1
         values_to_consider = value_sets.keys()[:index]
     else:
         values_to_consider = value_sets.keys()
@@ -153,10 +156,13 @@ def get_optimal_subset_mem_opt(
     return subset_df, removed_df
 
 
-def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, Dict[int, tuple]], upper_bound: float = None) -> Dict[int, tuple]:
+def get_maximal_set_sizes_with_upper_bound(value_sets: SortedDict[float, Dict[int, tuple]], upper_bound: float = None) -> Dict[int, tuple]:
     # value_sets: dict of {agg_value : {group_id: (size, agg_val)}}
     if upper_bound is not None:
         index = value_sets.bisect_left(upper_bound)
+        # should include keys[index]? yes, if it is still <= upper bound (i.e., equal to it)
+        if value_sets.keys()[index] <= upper_bound:
+            index += 1
         values_to_consider = value_sets.keys()[:index]
     else:
         values_to_consider = value_sets.keys()
@@ -214,7 +220,7 @@ def get_optimal_subset_pruning_mem_opt(
     #value_subsets: Dict[float, Tuple[set, int]] = {}
 
     # Dynamic programming table: key = agg value, value = maximal subset with agg value
-    value_subsets: Dict[float, Dict[int, tuple]] = {} # agg_value -> dict of group_id to (size, agg_val) (for the previous groups)
+    value_subsets: Dict[float, Dict[int, tuple]] = SortedDict() # agg_value -> dict of group_id to (size, agg_val) (for the previous groups)
     group_to_agg = {}
     group_to_orig_size = {}
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default

@@ -67,6 +67,9 @@ def get_maximal_set_with_upper_bound(
 ) -> Tuple[set, int]:
     if upper_bound is not None:
         index = value_sets.bisect_left(upper_bound)
+        # should include keys[index]? yes, if it is still <= upper bound (i.e., equal to it)
+        if value_sets.keys()[index] <= upper_bound:
+            index += 1
         values_to_consider = value_sets.keys()[:index]
     else:
         values_to_consider = value_sets.keys()
