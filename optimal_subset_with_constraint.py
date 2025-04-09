@@ -67,7 +67,7 @@ def get_maximal_set_with_upper_bound(value_sets: SortedDict[float, set], upper_b
     if upper_bound is not None:
         index = value_sets.bisect_left(upper_bound)
         # should include keys[index]? yes, if it is still <= upper bound (i.e., equal to it)
-        if value_sets.keys()[index] <= upper_bound:
+        if index < len(value_sets) and value_sets.keys()[index] <= upper_bound:
             index += 1
         values_to_consider = value_sets.keys()[:index]
     else:
@@ -161,7 +161,7 @@ def get_maximal_set_sizes_with_upper_bound(value_sets: SortedDict[float, Dict[in
     if upper_bound is not None:
         index = value_sets.bisect_left(upper_bound)
         # should include keys[index]? yes, if it is still <= upper bound (i.e., equal to it)
-        if value_sets.keys()[index] <= upper_bound:
+        if index < len(value_sets) and value_sets.keys()[index] <= upper_bound:
             index += 1
         values_to_consider = value_sets.keys()[:index]
     else:
