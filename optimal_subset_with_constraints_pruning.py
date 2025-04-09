@@ -1,6 +1,7 @@
 from typing import Dict, List, Union, Tuple
 
 import pandas as pd
+from sortedcontainers import SortedDict
 
 from aggregations_pruning import AggregationPruningFunction
 
@@ -17,7 +18,7 @@ def get_optimal_subset_pruning(
     # Dynamic programming table:
     # key = agg value
     # Value = maximal subset with agg value & number of removed tuples
-    value_subsets: Dict[float, Tuple[set, int]] = {}
+    value_subsets: SortedDict[float, Tuple[set, int]] = SortedDict()
 
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
@@ -50,7 +51,7 @@ def get_optimal_subset_pruning(
                 pruned_value_subsets[x] = (subset, removed_count)
                 max_keep_size = keep_size
 
-        value_subsets = pruned_value_subsets
+        value_subsets = SortedDict(pruned_value_subsets)
 
         # value_subsets = new_value_subsets
 
@@ -62,14 +63,19 @@ def get_optimal_subset_pruning(
 
 
 def get_maximal_set_with_upper_bound(
-        value_sets: Dict[float, Tuple[set, int]], upper_bound: float = None
+        value_sets: SortedDict[float, Tuple[set, int]], upper_bound: float = None
 ) -> Tuple[set, int]:
+    if upper_bound is not None:
+        index = value_sets.bisect_left(upper_bound)
+        values_to_consider = value_sets.keys()[:index]
+    else:
+        values_to_consider = value_sets.keys()
     maximal_set = set()
     removed_count = 0
 
-    for current_value, (current_set, current_removed_count) in value_sets.items():
-        if (upper_bound is None or current_value <= upper_bound) and len(current_set) > len(maximal_set):
+    for current_value in values_to_consider:
+        current_set, current_removed_count = value_sets[current_value]
+        if len(current_set) > len(maximal_set):
             maximal_set = current_set
             removed_count = current_removed_count
-
     return maximal_set, removed_count

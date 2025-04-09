@@ -1,4 +1,5 @@
 from typing import Dict, List, Union
+from sortedcontainers import SortedDict
 import sys
 import pandas as pd
 from tqdm import tqdm
@@ -24,7 +25,7 @@ def get_optimal_subset(
 ) -> (pd.DataFrame, pd.DataFrame):
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     # Dynamic programming table: key = agg value, value = maximal subset with agg value
-    value_subsets: Dict[float, set] = {}
+    value_subsets: SortedDict[float, set] = SortedDict()
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
         current_group_subsets = agg(group_df, agg_col)
@@ -50,7 +51,7 @@ def get_optimal_subset(
                 pruned_value_subsets[x] = subset
                 max_keep_size = keep_size
 
-        value_subsets = pruned_value_subsets
+        value_subsets = SortedDict(pruned_value_subsets)
 
         #value_subsets = new_value_subsets
 
@@ -61,13 +62,17 @@ def get_optimal_subset(
     return subset_df, removed_df
 
 
-def get_maximal_set_with_upper_bound(value_sets: Dict[float, set], upper_bound: float = None) -> set:
+def get_maximal_set_with_upper_bound(value_sets: SortedDict[float, set], upper_bound: float = None) -> set:
     maximal_set = set()
-
-    for current_value, current_set in value_sets.items():
-        if (upper_bound is None or current_value <= upper_bound) and len(current_set) > len(maximal_set):
+    if upper_bound is not None:
+        index = value_sets.bisect_left(upper_bound)
+        values_to_consider = value_sets.keys()[:index]
+    else:
+        values_to_consider = value_sets.keys()
+    for current_value in values_to_consider:
+        current_set = value_sets[current_value]
+        if len(current_set) > len(maximal_set):
             maximal_set = current_set
-
     return maximal_set
 
 
@@ -83,7 +88,7 @@ def get_optimal_subset_mem_opt(
     print("agg result before removal:")
     print(df.groupby(group_cols)[agg_col].sum())
     # Dynamic programming table: key = agg value, value = maximal subset with agg value
-    value_subsets: Dict[float, Dict[int, tuple]] = {} # agg_value -> dict of group_id to (size, agg_val) (for the previous groups)
+    value_subsets: Dict[float, Dict[int, tuple]] = SortedDict()  # agg_value -> dict of group_id to (size, agg_val) (for the previous groups)
     group_to_agg = {}
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
@@ -126,7 +131,7 @@ def get_optimal_subset_mem_opt(
                 pruned_value_subsets[x] = groups_subset_sizes_and_values
                 max_keep_size = keep_size
 
-        value_subsets = pruned_value_subsets
+        value_subsets = SortedDict(pruned_value_subsets)
 
         #value_subsets = new_value_subsets.copy()
 
@@ -150,15 +155,19 @@ def get_optimal_subset_mem_opt(
 
 def get_maximal_set_sizes_with_upper_bound(value_sets: Dict[float, Dict[int, tuple]], upper_bound: float = None) -> Dict[int, tuple]:
     # value_sets: dict of {agg_value : {group_id: (size, agg_val)}}
+    if upper_bound is not None:
+        index = value_sets.bisect_left(upper_bound)
+        values_to_consider = value_sets.keys()[:index]
+    else:
+        values_to_consider = value_sets.keys()
     max_repair_size = 0
     repair_sizes_and_values = {}
-    #print(f"upper bound: {upper_bound} value_sets: {value_sets}")
-    for current_value, gid_to_size_and_val in value_sets.items():
-        if upper_bound is None or current_value <= upper_bound:
-            current_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
-            if current_size > max_repair_size:
-                max_repair_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
-                repair_sizes_and_values = gid_to_size_and_val.copy()
+    for current_value in values_to_consider:
+        gid_to_size_and_val = value_sets[current_value]
+        current_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
+        if current_size > max_repair_size:
+            max_repair_size = sum([gid_to_size_and_val[group_id][0] for group_id in gid_to_size_and_val])
+            repair_sizes_and_values = gid_to_size_and_val.copy()
     return repair_sizes_and_values
 
 
@@ -275,7 +284,7 @@ def get_optimal_subset_pruning_mem_opt(
                 pruned_value_subsets[x] = groups_subset_sizes_and_values
                 max_keep_size = keep_size
 
-        value_subsets = pruned_value_subsets
+        value_subsets = SortedDict(pruned_value_subsets)
         #value_subsets = new_value_subsets
         print(f"len value_subsets: {len(value_subsets)} size of value subsets: {sys.getsizeof(value_subsets)}")
     gid_to_size_and_val = get_maximal_set_sizes_with_upper_bound(value_subsets)
