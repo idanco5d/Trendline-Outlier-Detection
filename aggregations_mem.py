@@ -208,14 +208,19 @@ def process_current_sum(args):
     global shared_previous_layer
 
     #current_result = defaultdict(lambda: -float('inf'))
-    current_result = defaultdict(lambda: defaultdict(lambda: -float('inf')))
+    #current_result = defaultdict(lambda: defaultdict(lambda: -float('inf')))
+    current_result = {}
 
     for current_size in shared_previous_layer[current_sum]:
         if max_removed is not None and current_size > max_removed:
             continue
         # Without removing the current tuple
+        if current_sum not in current_result:
+            current_result[current_sum] = {}
         current_result[current_sum][current_size] = current_size
         # With removing the current tuple
+        if current_sum - value not in current_result:
+            current_result[current_sum - value] = {}
         current_result[current_sum - value][current_size + 1] = current_size + 1
     return current_result
 
