@@ -77,7 +77,7 @@ def get_avg_subsets(df: pd.DataFrame, agg_col: str) -> Dict[float, set[int]]:
             for size in list(sum_subsets[current_sum].keys()):
                 subset = sum_subsets[current_sum][size]
                 if index in subset:
-                    continue #why would index ever be in subset??
+                    continue  # why would index ever be in subset??
                 new_sum = current_sum + value
                 new_size = size + 1
                 if new_sum not in sum_subsets:

@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Type
 from sortedcontainers import SortedDict
 import sys
 import pandas as pd
@@ -8,7 +8,7 @@ from multiprocessing import Pool, cpu_count
 
 from aggregations import AggregationFunction
 from aggregations_mem import AggregationMem
-
+from constants import *
 
 _shared_value_subsets = None
 
@@ -205,7 +205,7 @@ def get_optimal_subset_pruning_mem_opt(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
         agg_col: str,
-        Agg: AggregationMem,
+        Agg: Type[AggregationMem],
         max_removed: int = None,
         time_cutoff_seconds: int = None,
         parallelize: bool = False,
@@ -227,7 +227,7 @@ def get_optimal_subset_pruning_mem_opt(
         group_to_orig_size[group_key] = len(group_df)
         print(f"working on group: {group_key}")
         min_subset_size = len(group_df) - max_removed if max_removed is not None else None
-        agg = Agg()
+        agg = Agg(parallelize)
         group_to_agg[group_key] = agg  # save it for later
         current_group_subsets = agg.compute_max_subset_sizes(group_df, agg_col, min_subset_size)  # dict of agg_val: maximal subset size
         
@@ -238,7 +238,7 @@ def get_optimal_subset_pruning_mem_opt(
         if parallelize:
             pool_args = [(value, subset_size, group_key, len(group_df), group_to_orig_size, max_removed)
                           for value, subset_size in current_group_subsets.items()]
-            num_workers = min(20, cpu_count())
+            num_workers = min(NUM_PROCESSES, cpu_count())
             with Pool(processes=num_workers, initializer=init_worker, initargs=(value_subsets,)) as pool:
                 results = list(tqdm(pool.imap(process_subset_item, pool_args), total=len(pool_args)))
 

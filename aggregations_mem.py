@@ -1,16 +1,19 @@
 from itertools import combinations
 from typing import Dict, Protocol
 from collections import defaultdict
+from multiprocessing import Pool, cpu_count
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-ERROR_EPSILON = 0.00001
+from constants import *
+# ERROR_EPSILON = 0.00001
+# NUM_PROCESSES = 20
 
 
 class AggregationMem(object):
-    def __init__(self):
+    def __init__(self, parallelize=False):
         pass
         
     def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
@@ -45,7 +48,7 @@ class MaxAggregation(AggregationMem):
 
 
 class SumAggregation(AggregationMem):
-    def __init__(self):
+    def __init__(self, parallelize=False):
         self.tuples = None
         self.subset_sizes = None
     
@@ -97,7 +100,6 @@ class SumAggregation(AggregationMem):
                     subset.append(self.tuples[j][0])
                     s -= tuple_j_value
         if len(subset) != required_size:
-            print(subset2)
             print(len(subset))
             print(required_size)
             raise Exception("returned subset size does not match DP table")
@@ -107,20 +109,21 @@ class SumAggregation(AggregationMem):
 
 
 class AvgAggregation(AggregationMem):
-    def __init__(self):
+    def __init__(self, parallelize=False):
         super().__init__()
         self.tuples = None
         self.subset_sizes = None
+
     
     def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
         inf = len(df)+1
-        self.tuples = list(df[agg_col].to_dict().items()) # tuples of index and agg_col value
+        self.tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
 
         first_value = self.tuples[0][1]
         # subset_sizes is a dict of the form {j: {s: {k: subset size}}}, 
         # where j - the index of the tuple in an ordered list, s - the sum, and k - the size. subset_size is either k or -inf if no such subset exists.
         subset_sizes = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: -inf)))
-        subset_sizes[0][0][0] = 0 # initialize with an empty size (size 0) having sum 0
+        subset_sizes[0][0][0] = 0  # initialize with an empty size (size 0) having sum 0
         subset_sizes[0][first_value][1] = 1  # Initialize with sum first_value having the first tuple (subset size 1)
 
         for j in range(1, len(self.tuples)):
@@ -190,11 +193,39 @@ class AvgAggregation(AggregationMem):
         return subset
 
 
+
+# Global for read-only access in subprocesses
+shared_previous_layer = None
+
+
+def init_worker(subset_sizes_j_minus_1):
+    global shared_previous_layer
+    shared_previous_layer = subset_sizes_j_minus_1
+
+
+def process_current_sum(args):
+    current_sum, value, max_removed = args
+    global shared_previous_layer
+
+    #current_result = defaultdict(lambda: -float('inf'))
+    current_result = defaultdict(lambda: defaultdict(lambda: -float('inf')))
+
+    for current_size in shared_previous_layer[current_sum]:
+        if max_removed is not None and current_size > max_removed:
+            continue
+        # Without removing the current tuple
+        current_result[current_sum][current_size] = current_size
+        # With removing the current tuple
+        current_result[current_sum - value][current_size + 1] = current_size + 1
+    return current_result
+
+
 class AvgAggregationPruning(AggregationMem):
-    def __init__(self):
+    def __init__(self, parallelize=False):
         super().__init__()
         self.tuples = None
         self.subset_sizes = None
+        self.parallelize = parallelize
 
     def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, int]:
         inf = len(df) + 1
@@ -216,18 +247,34 @@ class AvgAggregationPruning(AggregationMem):
             current_subset_sizes = defaultdict(
                 lambda: defaultdict(lambda: -inf))  # Avoid modifying dict while iterating
 
-            for current_sum in subset_sizes[j - 1].keys():
-                for current_size in subset_sizes[j - 1][current_sum]:
-                    if max_removed is not None and current_size > max_removed:
-                        continue
-                    if current_sum not in current_subset_sizes or current_size not in current_subset_sizes[current_sum]:
-                        # without removing the current tuple
-                        current_subset_sizes[current_sum][current_size] = current_size
+            if self.parallelize:
+                previous_layer = subset_sizes[j - 1]
 
-                    if current_sum - value not in current_subset_sizes or (current_size + 1) not in \
-                            current_subset_sizes[current_sum - value]:
-                        # with removing the current tuple
-                        current_subset_sizes[current_sum - value][current_size + 1] = current_size + 1
+                # Prepare args for each current_sum
+                pool_args = [(current_sum, value, max_removed) for current_sum in previous_layer.keys()]
+                num_workers = min(cpu_count(), NUM_PROCESSES)
+
+                with Pool(processes=num_workers, initializer=init_worker, initargs=(previous_layer,)) as pool:
+                    results = list(pool.map(process_current_sum, pool_args))
+
+                # Merge results into current_subset_sizes
+                for res in results:
+                    for sum_key, sizes_dict in res.items():
+                        for size in sizes_dict.keys():
+                            current_subset_sizes[sum_key][size] = size
+            else:
+                for current_sum in subset_sizes[j - 1].keys():
+                    for current_size in subset_sizes[j - 1][current_sum]:
+                        if max_removed is not None and current_size > max_removed:
+                            continue
+                        if current_sum not in current_subset_sizes or current_size not in current_subset_sizes[current_sum]:
+                            # without removing the current tuple
+                            current_subset_sizes[current_sum][current_size] = current_size
+
+                        if current_sum - value not in current_subset_sizes or (current_size + 1) not in \
+                                current_subset_sizes[current_sum - value]:
+                            # with removing the current tuple
+                            current_subset_sizes[current_sum - value][current_size + 1] = current_size + 1
             subset_sizes[j] = current_subset_sizes
         self.subset_sizes = subset_sizes
         avg_subsets: Dict[float, int] = {}  # avg value to #tuples to keep
