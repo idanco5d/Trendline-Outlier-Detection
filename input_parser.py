@@ -2,6 +2,7 @@ import argparse
 import os
 from dataclasses import dataclass
 from typing import List, Union
+from functools import lru_cache
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -50,6 +51,7 @@ class Input:
     time_cutoff_seconds: int = None
 
 
+@lru_cache(maxsize=128)
 def parse_input() -> Input:
     args = get_input_arguments()
     df = pd.read_csv(args.dataset_file_name)
