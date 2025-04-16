@@ -1,12 +1,10 @@
 from typing import Dict, List, Union, Tuple
-from functools import lru_cache
 
 import pandas as pd
 from sortedcontainers import SortedDict
 
 from aggregations_pruning import AggregationPruningFunction
 
-@lru_cache(maxsize=128)
 def get_optimal_subset_pruning(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
