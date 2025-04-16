@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+#import concurrent.futures
 
 from aggregations import AggregationFunction
 from aggregations_mem import AggregationMem
@@ -14,7 +15,6 @@ _shared_value_subsets = None
 def init_worker(value_subsets_data):
     global _shared_value_subsets
     _shared_value_subsets = value_subsets_data
-
 
 
 def get_optimal_subset(
@@ -77,6 +77,7 @@ def get_maximal_set_with_upper_bound(value_sets: SortedDict[float, set], upper_b
         if len(current_set) > len(maximal_set):
             maximal_set = current_set
     return maximal_set
+
 
 def get_optimal_subset_mem_opt(
         df: pd.DataFrame,
@@ -198,6 +199,7 @@ def process_subset_item(args):
         previous_groups_subset_sizes_and_values[group_key] = (subset_size, value)
         return value, previous_groups_subset_sizes_and_values
     return None
+
 
 def get_optimal_subset_pruning_mem_opt(
         df: pd.DataFrame,

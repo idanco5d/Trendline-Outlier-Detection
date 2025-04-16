@@ -49,5 +49,6 @@ if __name__ == '__main__':
     print("Optimal solution is: \n", subset_df)
     print("The removed tuples are: \n", removed_df)
     
+    #subset_df.to_csv(os.path.join(args.output_folder, f"dp_result-{input_data.orig_fname}.csv"), index=True)
     removed_df.to_csv(os.path.join(input_data.output_folder, f"dp_removed-{input_data.orig_fname}.csv"), index=True)
     print(f"time: {time.time()-s}")

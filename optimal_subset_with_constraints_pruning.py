@@ -5,6 +5,7 @@ from sortedcontainers import SortedDict
 
 from aggregations_pruning import AggregationPruningFunction
 
+
 def get_optimal_subset_pruning(
         df: pd.DataFrame,
         group_cols: Union[str, List[str]],
