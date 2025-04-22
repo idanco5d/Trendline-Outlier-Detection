@@ -122,14 +122,14 @@ class SumAggregationOpt(AggregationMem):
         # Cell s in sum_to_max_size will contain the maximal size of a subset with sum s.
         # sum_to_max_size[s] = maximal size of a subset with sum s
         sum_to_max_size = [-1] * (sum(items) + 1)
-        # data is a matrix. data[num_used][s] = maximal size of subset using values v1,..,vj with sum s (or -1 if there is not such subset)
+        # data is a matrix. data[j][s] = maximal size of subset using values v1,..,vj with sum s (or -1 if there is not such subset)
         data = []
         sum_to_max_size[0] = 0
         maximal_sum_reached = 0  # maximal sum possible using unique values v1,..,vj (vj - current vj)
 
-        for vj, amt in hist:
+        for vj, amt in tqdm(hist):
             maximal_sum_reached += vj * amt
-            print(vj, maximal_sum_reached)
+            #print(vj, maximal_sum_reached)
             # current_arr is the next row in data (for the unique values up to vj, and all the possible sums.)
             # current_arr[s] = how many items of value vj were used to reach sum s in the optimal solution.
             current_arr = [0] * (sum(items) + 1)
@@ -190,11 +190,12 @@ class SumAggregationOpt(AggregationMem):
         # # create a dict of agg_val to max_subset_size:
         # val_to_max_size = subset_sizes[len(self.tuples) - 1]
         hist, sum_to_max_size, data = self.calc_knapsack(df, agg_col)
+        result = dict(enumerate(sum_to_max_size))
         self.df = df
         self.agg_col = agg_col
         self.data = data
         self.hist = hist
-        return sum_to_max_size
+        return result
 
     def get_subset_histogram_for_sum(self, target_sum):
         """returns a list of tuples of (value, count) representing a histogram of the solution subset."""
@@ -212,13 +213,11 @@ class SumAggregationOpt(AggregationMem):
             raise Exception("self.data empty when get_subset_for_value was called")
         solution_histogram = self.get_subset_histogram_for_sum(required_value)
         # build subset from solution histogram
-        grouped_indices = {k: list(v) for k, v in self.df.groupby(self.agg_col).items()}
+        grouped_indices = {k: list(v) for k, v in self.df.groupby(self.agg_col).groups.items()}
         solution_indices = []
         for value, required_count in solution_histogram:
             solution_indices.extend(grouped_indices[value][:required_count])
         return solution_indices
-
-
 
 
 class AvgAggregation(AggregationMem):

@@ -85,6 +85,7 @@ def get_optimal_subset_mem_opt(
         agg_col: str,
         Agg: AggregationMem,
         time_cutoff_seconds: int = None,
+        # TODO: parallelize the long loop!
 ) -> (pd.DataFrame, pd.DataFrame):
     print("mem opt")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
