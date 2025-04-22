@@ -14,10 +14,12 @@ class AggregationPruningFunction(Protocol):
 
 def get_sum_subsets_pruning(df: pd.DataFrame, agg_col: str, min_subset_size: int = None, parallelize: bool = False) -> Dict[float, set[int]]:
     # Dynamic programming dictionary: key = sum, value = indices of subset with sum & maximal size
+    # TODO: save the indices to remove instead of the indices to keep
     sum_subsets = {df[agg_col].sum(): get_index_set(df)}
 
-    for index, row in df.iterrows():
+    for index, row in tqdm(df.iterrows(), total=len(df)):
         value = row[agg_col]
+        # TODO: maybe avoid this - too many copies
         current_sum_subsets = sum_subsets.copy()  # Avoid modifying dict while iterating
 
         for current_sum, subset in sum_subsets.items():

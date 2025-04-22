@@ -108,6 +108,119 @@ class SumAggregation(AggregationMem):
         return subset
 
 
+class SumAggregationOpt(AggregationMem):
+    def __init__(self, parallelize=False):
+        self.tuples = None
+        self.subset_sizes = None
+
+    def calc_knapsack(self, df: pd.DataFrame, agg_col: str):
+        items = sorted(df[agg_col].values)  # this part is important to ensure there are no duplicates
+
+        # make a histogram
+        hist = list(df[agg_col].value_counts().items())
+
+        # Cell s in sum_to_max_size will contain the maximal size of a subset with sum s.
+        # sum_to_max_size[s] = maximal size of a subset with sum s
+        sum_to_max_size = [-1] * (sum(items) + 1)
+        # data is a matrix. data[num_used][s] = maximal size of subset using values v1,..,vj with sum s (or -1 if there is not such subset)
+        data = []
+        sum_to_max_size[0] = 0
+        maximal_sum_reached = 0  # maximal sum possible using unique values v1,..,vj (vj - current vj)
+
+        for vj, amt in hist:
+            maximal_sum_reached += vj * amt
+            print(vj, maximal_sum_reached)
+            # current_arr is the next row in data (for the unique values up to vj, and all the possible sums.)
+            # current_arr[s] = how many items of value vj were used to reach sum s in the optimal solution.
+            current_arr = [0] * (sum(items) + 1)
+            temp_sum_to_max_size = sum_to_max_size.copy()
+            # Go over all possible sums that can be reached with items of value <vj>.
+            # In each iteration, we attempt to add a vj item to the solution.
+            for s in range(vj, maximal_sum_reached + 1):
+                # how many items with value vj are included in the optimal solution for sum s-vj
+                num_used_vj_items = current_arr[s - vj]
+                sum_without_vj_items = s - (num_used_vj_items + 1) * vj
+                # if an item could be included but it doesn't increase the number of items - we don't take it
+                if (num_used_vj_items < amt  # there are unused items of value vj
+                        and sum_without_vj_items >= 0  # TODO: possibly redundant
+                        # and using including n vj items is better than the current optimal solution without vj items
+                        and sum_to_max_size[sum_without_vj_items] + num_used_vj_items + 1 > sum_to_max_size[s]):
+                    # add another vj item
+                    current_arr[s] = num_used_vj_items + 1
+                    temp_sum_to_max_size[s] = sum_to_max_size[sum_without_vj_items] + num_used_vj_items + 1
+
+                if num_used_vj_items == amt:  # all vj items are used
+                    # TODO understand this part
+                    for num_used in range(1, amt + 1):
+                        # use as little as possible vj items
+                        # temp_sum_to_max_size[s] - current size of optimal solution for sum i (using less than num_used items with "vj")
+                        # sum_to_max_size[s - vj * num_used] + num_used - size of solution that uses num_used items with "vj"
+                        if sum_to_max_size[s - vj * num_used] + num_used > temp_sum_to_max_size[s]:
+                            current_arr[s] = num_used
+                            temp_sum_to_max_size[s] = sum_to_max_size[s - vj * num_used] + num_used
+            sum_to_max_size = temp_sum_to_max_size
+            data.append(current_arr)
+        return hist, sum_to_max_size, data
+
+
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+        # inf = len(df) + 1
+        # self.tuples = list(df[agg_col].sort_values(by=agg_col).to_dict().items())  # tuples of index and agg_col value
+        #
+        # first_value = self.tuples[0][1]
+        # # subset_sizes is a dict of the form {j: {s: subset size}}, j - the index of the tuple in an ordered list, s - the sum.
+        # subset_sizes = defaultdict(lambda: defaultdict(lambda: -inf))
+        # subset_sizes[0][0] = 0  # initialize with an empty size (size 0) having sum 0
+        # subset_sizes[0][first_value] = 1  # Initialize with sum first_value having the first tuple (subset size 1)
+        #
+        # for j in range(1, len(self.tuples)):
+        #     value = self.tuples[j][1]  # value of the current tuple
+        #     current_subset_sizes = defaultdict(lambda: -inf)  # Avoid modifying dict while iterating
+        #
+        #     for current_sum, subset_size in subset_sizes[j - 1].items():
+        #         if current_sum not in current_subset_sizes or current_subset_sizes[current_sum] < subset_size:
+        #             # without the current tuple
+        #             current_subset_sizes[current_sum] = subset_size
+        #         if current_sum + value not in current_subset_sizes or current_subset_sizes[
+        #             current_sum + value] < subset_size + 1:
+        #             # with the current tuple
+        #             current_subset_sizes[current_sum + value] = subset_size + 1
+        #     subset_sizes[j] = current_subset_sizes
+        # self.subset_sizes = subset_sizes
+        # # create a dict of agg_val to max_subset_size:
+        # val_to_max_size = subset_sizes[len(self.tuples) - 1]
+        hist, sum_to_max_size, data = self.calc_knapsack(df, agg_col)
+        self.df = df
+        self.agg_col = agg_col
+        self.data = data
+        self.hist = hist
+        return sum_to_max_size
+
+    def get_subset_histogram_for_sum(self, target_sum):
+        """returns a list of tuples of (value, count) representing a histogram of the solution subset."""
+        index = len(self.hist) - 1  # index of unique value
+        while index >= 0:
+            if self.data[index][target_sum] > 0:
+                value = self.hist[index][0]
+                count = self.data[index][target_sum]
+                yield (value, count)
+                target_sum -= value*count
+            index -= 1
+
+    def get_subset_for_value(self, required_value: float):
+        if self.data is None:
+            raise Exception("self.data empty when get_subset_for_value was called")
+        solution_histogram = self.get_subset_histogram_for_sum(required_value)
+        # build subset from solution histogram
+        grouped_indices = {k: list(v) for k, v in self.df.groupby(self.agg_col).items()}
+        solution_indices = []
+        for value, required_count in solution_histogram:
+            solution_indices.extend(grouped_indices[value][:required_count])
+        return solution_indices
+
+
+
+
 class AvgAggregation(AggregationMem):
     def __init__(self, parallelize=False):
         super().__init__()
@@ -241,6 +354,7 @@ class AvgAggregationPruning(AggregationMem):
         # subset_sizes is a dict of the form {j: {s: {k: subset size}}},
         # where j - the index of the tuple in an ordered list, s - the sum, and k - the size (of the removed subset).
         # subset_size is either k or -inf if no such subset exists.
+        # TODO: make this into a list of subset sizes. Meaning: {j: {s: {k1, k2,...}}}
         subset_sizes = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: -inf)))
         subset_sizes[0][s][0] = 0  # initialize with an empty size (size 0) having sum 0
         subset_sizes[0][s - first_value][1] = 1  # Initialize with sum-first_value - when removing the first tuple (subset size 1)
