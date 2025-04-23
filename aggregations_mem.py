@@ -162,8 +162,7 @@ class SumAggregationOpt(AggregationMem):
             data.append(current_arr)
         return hist, sum_to_max_size, data
 
-
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, int]:
         # inf = len(df) + 1
         # self.tuples = list(df[agg_col].sort_values(by=agg_col).to_dict().items())  # tuples of index and agg_col value
         #
