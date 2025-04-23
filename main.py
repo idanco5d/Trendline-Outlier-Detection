@@ -17,7 +17,7 @@ if __name__ == '__main__':
             Agg=input_data.aggregation,
             max_removed=input_data.prune,
             time_cutoff_seconds=input_data.time_cutoff_seconds,
-            parallelize=False,
+            parallelize=True,
         )
     elif input_data.prune is not None:
         subset_df, removed_df = get_optimal_subset_pruning(

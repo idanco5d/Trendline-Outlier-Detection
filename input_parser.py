@@ -34,7 +34,8 @@ MEM_AGGREGATIONS = {
 }
 
 MEM_AND_PRUNING_AGGREGATIONS = {
-    'AVG': AvgAggregationPruning
+    'AVG': AvgAggregationPruning,
+    'SUM': SumAggregationOpt,  # TODO: it's not using the pruning but it's already fast. We could still use pruning and see if it helps.
 }
 
 
