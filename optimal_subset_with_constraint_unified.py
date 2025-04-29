@@ -1,3 +1,5 @@
+from multiprocessing import Pool
+
 from sortedcontainers import SortedDict
 import pandas as pd
 from typing import Dict, List, Union, Type
@@ -37,6 +39,13 @@ def prune_H(H):
             max_count = H[option][0]
     return SortedDict(newH)
 
+def compute_F_for_group(Agg: Type[AggregationMem], agg_col: str):
+    def _compute(group_tuple):
+        group_key, group_df = group_tuple
+        print(f"working on group: {group_key}")  # a bit misleading when being parallelized
+        agg = Agg()
+        return group_key, agg.compute_max_subset_sizes(group_df, agg_col), agg
+    return _compute
 
 def get_optimal_subset_F_first(
         df: pd.DataFrame,
@@ -60,12 +69,15 @@ def get_optimal_subset_F_first(
 
     aggs = {}
     # First compute F (realizable aggregations and max subset size) for each group.
-    for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
-        print(f"working on group: {group_key}")
-        agg = Agg()
-        output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col)
-        aggs[group_key] = agg
-        keys.append(group_key)
+
+    # parallel approach
+    with Pool() as pool:
+        results = pool.map(compute_F_for_group(Agg, agg_col), df.groupby(group_cols))
+        for group_key, agg_result, agg in results:
+            output[group_key] = agg_result
+            aggs[group_key] = agg
+            keys.append(group_key)
+
     # Next, compute the solution (main DP).
     for key in keys:
         print(f"merging + pruning group: {key}")
