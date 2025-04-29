@@ -1,6 +1,7 @@
 from input_parser import parse_input
 from optimal_subset_with_constraint import get_optimal_subset, get_optimal_subset_mem_opt, get_optimal_subset_pruning_mem_opt
 from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
+from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
 import os
 import time
 
@@ -29,12 +30,13 @@ if __name__ == '__main__':
             parallelize=False,
         )
     elif input_data.mem_opt:
-        subset_df, removed_df = get_optimal_subset_mem_opt(
+        #subset_df, removed_df = get_optimal_subset_mem_opt(
+        subset_df, removed_df = get_optimal_subset_F_first(
             df=input_data.df,
             group_cols=input_data.group_cols,
             agg_col=input_data.agg_col,
             Agg=input_data.aggregation,
-            time_cutoff_seconds=input_data.time_cutoff_seconds,
+            #time_cutoff_seconds=input_data.time_cutoff_seconds,
         )
     else:
         subset_df, removed_df = get_optimal_subset(
