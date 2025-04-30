@@ -39,7 +39,7 @@ def prune_H(H):
             max_count = H[option][0]
     return SortedDict(newH)
 
-def compute_F_for_group(Agg: Type[AggregationMem], agg_col: str, group_tuple: tuple):
+def _compute_F_for_group(Agg: Type[AggregationMem], agg_col: str, group_tuple: tuple):
     group_key, group_df = group_tuple
     print(f"working on group: {group_key}")  # a bit misleading when being parallelized
     agg = Agg()
@@ -74,9 +74,9 @@ def get_optimal_subset_F_first(
 
     if parallel:
         with Pool() as pool:
-            results = pool.starmap(compute_F_for_group, groups_compute_args)
+            results = pool.starmap(_compute_F_for_group, groups_compute_args)
     else:
-        results = [compute_F_for_group(*group_args) for group_args in groups_compute_args]
+        results = [_compute_F_for_group(*group_args) for group_args in groups_compute_args]
 
     for group_key, agg_result, agg in results:
         output[group_key] = agg_result
