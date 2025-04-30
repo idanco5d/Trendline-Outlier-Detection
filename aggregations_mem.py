@@ -169,15 +169,14 @@ class SumAggregationOpt(AggregationMem):
 
     def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, int]:
         items = sorted(df[agg_col].values)  # to ensure there are no duplicates
-        # make a histogram
-        hist = list(df[agg_col].value_counts().items())
+        # make a histogram, sorted by the value.
+        self.hist = sorted(list(df[agg_col].value_counts().items()), key=lambda x: x[0])
 
-        sum_to_max_size, data = self.calc_knapsack(items, hist)
+        sum_to_max_size, data = self.calc_knapsack(items, self.hist)
         result = dict(enumerate(sum_to_max_size))
         self.df = df
         self.agg_col = agg_col
         self.data = data
-        self.hist = hist
         return result
 
     def get_subset_histogram_for_sum(self, target_sum):
@@ -187,7 +186,7 @@ class SumAggregationOpt(AggregationMem):
             if self.data[index][target_sum] > 0:
                 value = self.hist[index][0]
                 count = self.data[index][target_sum]
-                yield (value, count)
+                yield value, count
                 target_sum -= value*count
             index -= 1
 

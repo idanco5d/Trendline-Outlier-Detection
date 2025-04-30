@@ -73,8 +73,10 @@ def get_optimal_subset_F_first(
         H = prune_H(H)
 
     ids_to_keep = []
-    # TODO why is this enough? why do we not need to search for the best solution in H? Is it because of the pruning?
-    agg_values_and_group_keys = H[H.keys()[-1]][1]
+    # We don't need to search for the best solution in H because of the pruning.
+    # The solution with the largest x value will be the largest repair.
+    largest_x = H.keys()[-1]
+    agg_values_and_group_keys = H[largest_x][1]
     for agg_value, group_key in agg_values_and_group_keys:
         ids_to_keep.extend(aggs[group_key].get_subset_for_value(agg_value))
 
