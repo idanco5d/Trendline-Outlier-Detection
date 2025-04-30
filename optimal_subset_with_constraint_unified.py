@@ -52,6 +52,7 @@ def get_optimal_subset_F_first(
         #agg_func_str: str,
         Agg: Type[AggregationMem],
         #max_removed: int = None,
+        parallel: bool = False
 ) -> (pd.DataFrame, pd.DataFrame):
     print(len(df))
     print("mem opt")
@@ -68,13 +69,20 @@ def get_optimal_subset_F_first(
     aggs = {}
     # First compute F (realizable aggregations and max subset size) for each group.
 
-    # parallel approach
-    with Pool() as pool:
-        groups = df.groupby(group_cols)
-        pool_args = [(Agg, agg_col, group) for group in groups]
-        results = pool.starmap(compute_F_for_group, pool_args)
-        for group_key, agg_result, agg in results:
-            output[group_key] = agg_result
+    if parallel:
+        with Pool() as pool:
+            groups = df.groupby(group_cols)
+            pool_args = [(Agg, agg_col, group) for group in groups]
+            results = pool.starmap(compute_F_for_group, pool_args)
+            for group_key, agg_result, agg in results:
+                output[group_key] = agg_result
+                aggs[group_key] = agg
+                keys.append(group_key)
+    else:
+        for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
+            print(f"working on group: {group_key}")
+            agg = Agg()
+            output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col)
             aggs[group_key] = agg
             keys.append(group_key)
 
