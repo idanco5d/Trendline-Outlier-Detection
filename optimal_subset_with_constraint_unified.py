@@ -69,22 +69,19 @@ def get_optimal_subset_F_first(
     aggs = {}
     # First compute F (realizable aggregations and max subset size) for each group.
 
+    groups = df.groupby(group_cols)
+    groups_compute_args = [(Agg, agg_col, group) for group in groups]
+
     if parallel:
         with Pool() as pool:
-            groups = df.groupby(group_cols)
-            pool_args = [(Agg, agg_col, group) for group in groups]
-            results = pool.starmap(compute_F_for_group, pool_args)
-            for group_key, agg_result, agg in results:
-                output[group_key] = agg_result
-                aggs[group_key] = agg
-                keys.append(group_key)
+            results = pool.starmap(compute_F_for_group, groups_compute_args)
     else:
-        for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
-            print(f"working on group: {group_key}")
-            agg = Agg()
-            output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col)
-            aggs[group_key] = agg
-            keys.append(group_key)
+        results = [compute_F_for_group(*group_args) for group_args in groups_compute_args]
+
+    for group_key, agg_result, agg in results:
+        output[group_key] = agg_result
+        aggs[group_key] = agg
+        keys.append(group_key)
 
     # Next, compute the solution (main DP).
     for key in keys:
