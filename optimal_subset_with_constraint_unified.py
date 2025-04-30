@@ -39,13 +39,11 @@ def prune_H(H):
             max_count = H[option][0]
     return SortedDict(newH)
 
-def compute_F_for_group(Agg: Type[AggregationMem], agg_col: str):
-    def _compute(group_tuple):
-        group_key, group_df = group_tuple
-        print(f"working on group: {group_key}")  # a bit misleading when being parallelized
-        agg = Agg()
-        return group_key, agg.compute_max_subset_sizes(group_df, agg_col), agg
-    return _compute
+def compute_F_for_group(Agg: Type[AggregationMem], agg_col: str, group_tuple: tuple):
+    group_key, group_df = group_tuple
+    print(f"working on group: {group_key}")  # a bit misleading when being parallelized
+    agg = Agg()
+    return group_key, agg.compute_max_subset_sizes(group_df, agg_col), agg
 
 def get_optimal_subset_F_first(
         df: pd.DataFrame,
@@ -72,7 +70,9 @@ def get_optimal_subset_F_first(
 
     # parallel approach
     with Pool() as pool:
-        results = pool.map(compute_F_for_group(Agg, agg_col), df.groupby(group_cols))
+        groups = df.groupby(group_cols)
+        pool_args = [(Agg, agg_col, group) for group in groups]
+        results = pool.starmap(compute_F_for_group, pool_args)
         for group_key, agg_result, agg in results:
             output[group_key] = agg_result
             aggs[group_key] = agg
