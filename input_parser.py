@@ -10,7 +10,8 @@ from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_
     get_min_subsets, get_sum_subsets, get_median_subsets, AggregationFunction
 from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, get_median_subsets_pruning, AggregationPruningFunction
 
-from aggregations_mem import AggregationMem, SumAggregation, SumAggregationOpt, AvgAggregation, AvgAggregationPruning
+from aggregations_mem import AggregationMem, SumAggregation, SumAggregationOpt, AvgAggregation, AvgAggregationPruning, \
+    MedianAggregationOpt
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -31,6 +32,7 @@ MEM_AGGREGATIONS = {
     #'SUM': SumAggregation,
     'SUM': SumAggregationOpt,
     'AVG': AvgAggregation,
+    'MEDIAN': MedianAggregationOpt,
 }
 
 MEM_AND_PRUNING_AGGREGATIONS = {
@@ -83,7 +85,7 @@ def get_input_arguments() -> argparse.Namespace:
     parser.add_argument('--mem_opt', action=argparse.BooleanOptionalAction)
     parser.set_defaults(mem_opt=False)
     parser.add_argument('--cutoff_seconds', type=int, metavar='N', help='time cutoff in seconds')
-    parser.add_argument('--output_folder', type=str, help='path to save results')
+    parser.add_argument('--output_folder', type=str, help='path to save results', required=True)
 
     return parser.parse_args()
 
