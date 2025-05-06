@@ -30,13 +30,11 @@ if __name__ == '__main__':
             parallelize=False,
         )
     elif input_data.mem_opt:
-        #subset_df, removed_df = get_optimal_subset_mem_opt(
         subset_df, removed_df = get_optimal_subset_F_first(
             df=input_data.df,
             group_cols=input_data.group_cols,
             agg_col=input_data.agg_col,
             Agg=input_data.aggregation,
-            #time_cutoff_seconds=input_data.time_cutoff_seconds,
         )
     else:
         subset_df, removed_df = get_optimal_subset(
