@@ -1,5 +1,5 @@
 from input_parser import parse_input
-from optimal_subset_with_constraint import get_optimal_subset, get_optimal_subset_mem_opt, get_optimal_subset_pruning_mem_opt
+from optimal_subset_with_constraint import get_optimal_subset, get_optimal_subset_pruning_mem_opt
 from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
 from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
 import os
