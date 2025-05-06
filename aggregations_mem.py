@@ -220,14 +220,14 @@ class MedianAggregationOpt(AggregationMem):
         # when keeping all items
         n = len(items)
         # single pivot
-        for index in range(n):
+        for index in tqdm(range(n)):
             remaining_on_each_side = min(index, n - index - 1)
             remaining_items = 2 * remaining_on_each_side + 1
             if output[items[index]] < remaining_items:
                 output[items[index]] = remaining_items
                 data[items[index]] = ([items[index]], remaining_on_each_side)  # pivots, how many each side
         # double adjacent pivot
-        for index in range(n - 1):
+        for index in tqdm(range(n - 1)):
             remaining_on_each_side = min(index, n - index - 2)
             remaining_items = 2 * remaining_on_each_side + 2
             median = (items[index] + items[index + 1]) / 2
@@ -236,7 +236,7 @@ class MedianAggregationOpt(AggregationMem):
                 data[median] = ([items[index], items[index + 1]], remaining_on_each_side)  # pivots, how many each side
         # double nonadjacent pivot. For each possible median, we want the two closest pivots.
         remaining_on_the_left = 0
-        for i in range(len(hist)):
+        for i in tqdm(range(len(hist))):
             remaining_on_the_left += hist[i][1]
             remaining_on_the_right = n - remaining_on_the_left
             for j in range(i + 1, len(hist)):
