@@ -78,6 +78,7 @@ def get_optimal_subset_F_first(
     # We don't need to search for the best solution in H because of the pruning.
     # The solution with the largest x value will be the largest repair.
     largest_x = H.keys()[-1]
+    print(f"largest_x: {largest_x}, H[largest_x]={H[largest_x]}")
     agg_values_and_group_keys = H[largest_x][1]
     for agg_value, group_key in agg_values_and_group_keys:
         ids_to_keep.extend(aggs[group_key].get_subset_for_value(agg_value))

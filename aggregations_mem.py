@@ -260,6 +260,7 @@ class MedianAggregationOpt(AggregationMem):
         return median_to_max_size
 
     def get_subset_histogram_for_median(self, target):
+        # TODO compare the expected number of removal to the actual set of tuples
         pivots, remaining_on_each_side = self.data[target]
         values_needed = []
         amount_needed = []
