@@ -210,6 +210,99 @@ class SumAggregationOpt(AggregationMem):
         #         needed_items[(key[0], item[0])] = item[1]
 
 
+class MedianAggregationOpt(AggregationMem):
+    def __init__(self, parallelize=False):
+        pass
+
+    def get_medians(self, items, hist):
+        output = defaultdict(lambda: -1)  # median to num of remaining items
+        data = defaultdict(lambda: ([], 0))  # median to (pivot list, num items on each side)
+        # when keeping all items
+        n = len(items)
+        # single pivot
+        for index in tqdm(range(n)):
+            remaining_on_each_side = min(index, n - index - 1)
+            remaining_items = 2 * remaining_on_each_side + 1
+            if output[items[index]] < remaining_items:
+                output[items[index]] = remaining_items
+                data[items[index]] = ([items[index]], remaining_on_each_side)  # pivots, how many each side
+        # double adjacent pivot
+        for index in tqdm(range(n - 1)):
+            remaining_on_each_side = min(index, n - index - 2)
+            remaining_items = 2 * remaining_on_each_side + 2
+            median = (items[index] + items[index + 1]) / 2
+            if output[median] < remaining_items:
+                output[median] = remaining_items
+                data[median] = ([items[index], items[index + 1]], remaining_on_each_side)  # pivots, how many each side
+        # double nonadjacent pivot. For each possible median, we want the two closest pivots.
+        remaining_on_the_left = 0
+        for i in tqdm(range(len(hist))):
+            remaining_on_the_left += hist[i][1]
+            remaining_on_the_right = n - remaining_on_the_left
+            for j in range(i + 1, len(hist)):
+                median = (hist[i][0] + hist[j][0]) / 2
+                if output[median] < 2 * min(remaining_on_the_left, remaining_on_the_right):
+                    output[median] = 2 * min(remaining_on_the_left, remaining_on_the_right)
+                    data[median] = ([hist[i][0], hist[j][0]], min(remaining_on_the_left,
+                                                                  remaining_on_the_right) - 1)  # pivots, how many each side
+                remaining_on_the_right -= hist[j][1]
+        return output, data
+
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+        items = sorted(df[agg_col].values)  # to ensure there are no duplicates
+        # make a histogram, sorted by the value.
+        self.hist = sorted(list(df[agg_col].value_counts().items()), key=lambda x: x[0])
+
+        median_to_max_size, data = self.get_medians(items, self.hist)
+        self.df = df
+        self.agg_col = agg_col
+        self.data = data
+        return median_to_max_size
+
+    def get_subset_histogram_for_median(self, target):
+        # TODO compare the expected number of removal to the actual set of tuples
+        pivots, remaining_on_each_side = self.data[target]
+        values_needed = []
+        amount_needed = []
+        remaining_on_the_left = remaining_on_each_side
+        index = 0
+        while remaining_on_the_left > 0:
+            values_needed.append(self.hist[index][0])
+            amount_needed.append(min(self.hist[index][1], remaining_on_the_left))
+            remaining_on_the_left -= self.hist[index][1]
+            index += 1
+        needed_end = remaining_on_each_side
+        index = len(self.hist) - 1
+        while needed_end > 0:
+            if self.hist[index][0] not in values_needed:
+                values_needed.append(self.hist[index][0])
+                amount_needed.append(0)
+            amount_needed[values_needed.index(self.hist[index][0])] += min(self.hist[index][1], needed_end)
+            needed_end -= self.hist[index][1]
+            index -= 1
+        # pivots
+        for pivot in pivots:
+            if pivot not in values_needed:
+                values_needed.append(pivot)
+                amount_needed.append(0)
+            amount_needed[values_needed.index(pivot)] += 1
+        for index in range(len(values_needed)):
+            yield values_needed[index], amount_needed[index]
+
+    def get_subset_for_value(self, required_value: float):
+        if self.data is None:
+            raise Exception("self.data empty when get_subset_for_value was called")
+        solution_histogram = self.get_subset_histogram_for_median(required_value)
+        # build subset from solution histogram
+        grouped_indices = {k: list(v) for k, v in self.df.groupby(self.agg_col).groups.items()}
+        solution_indices = []
+        for value, required_count in solution_histogram:
+            solution_indices.extend(grouped_indices[value][:required_count])
+        return solution_indices
+
+
+
+
 class AvgAggregation(AggregationMem):
     def __init__(self, parallelize=False):
         super().__init__()

@@ -7,12 +7,14 @@ from aggregations_mem import AggregationMem
 
 def update_H(F, H, group_id):
     """
-    :param F: agg value to count of remaining tuples (for group i)
+    :param F: dictionary from agg value to count of remaining tuples (for group i)
     :param H: sorted dict of agg value (x) to: (count, [(agg_value, group_id)]) for groups 1..i-1, such that agg value of group i-1 = x)
     :param group_id: value of group by column that represents group i.
     :return:
     """
-    for agg_value in range(len(F) - 1, 0, -1):
+    agg_values = sorted(F.keys(), reverse=True)  # sort feasible aggregation values from large to small
+    # for agg_value in range(len(F) - 1, 0, -1):
+    for agg_value in agg_values:
         if F[agg_value] > 0:
             index = H.bisect_right(agg_value)
             largest_below_agg_value = H.keys()[index-1]
@@ -56,7 +58,7 @@ def get_optimal_subset_F_first(
 
     H = SortedDict()
     H[0] = (0, [])  # first element is the amount of items, the second is the sum in each key group
-    keys = []
+    group_keys = []
 
     aggs = {}
     # First compute F (realizable aggregations and max subset size) for each group.
@@ -65,17 +67,18 @@ def get_optimal_subset_F_first(
         agg = Agg()
         output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col)
         aggs[group_key] = agg
-        keys.append(group_key)
+        group_keys.append(group_key)
     # Next, compute the solution (main DP).
-    for key in keys:
-        print(f"merging + pruning group: {key}")
-        H = update_H(output[key], H, key)
+    for group_key in group_keys:
+        print(f"merging + pruning group: {group_key}")
+        H = update_H(output[group_key], H, group_key)
         H = prune_H(H)
 
     ids_to_keep = []
     # We don't need to search for the best solution in H because of the pruning.
     # The solution with the largest x value will be the largest repair.
     largest_x = H.keys()[-1]
+    print(f"largest_x: {largest_x}, H[largest_x]={H[largest_x]}")
     agg_values_and_group_keys = H[largest_x][1]
     for agg_value, group_key in agg_values_and_group_keys:
         ids_to_keep.extend(aggs[group_key].get_subset_for_value(agg_value))
