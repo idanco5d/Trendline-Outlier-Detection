@@ -1,11 +1,14 @@
-from itertools import combinations
 from typing import Dict, Protocol
+from enum import Enum
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 ERROR_EPSILON = 0.00001
+
+class AggType(Enum):
+    SUM = 'sum'
 
 
 def get_index_set(df: pd.DataFrame) -> set:
