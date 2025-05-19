@@ -50,6 +50,6 @@ if __name__ == '__main__':
     print("The removed tuples are: \n", removed_df)
 
     if output_folder := input_data.output_folder:
-        removed_df.to_csv(os.path.join(output_folder, f"dp_removed-{input_data.orig_fname}.csv"), index=True)
+        removed_df.to_csv(os.path.join(output_folder, f"dp_removed-{input_data.orig_fname}"), index=True)
 
     print(f"time: {time.time()-s}")
