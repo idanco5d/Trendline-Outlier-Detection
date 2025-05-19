@@ -1,19 +1,18 @@
-from itertools import combinations
 from typing import Dict, Protocol
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
+from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from aggregations import AggType
 from constants import *
-# ERROR_EPSILON = 0.00001
-# NUM_PROCESSES = 20
 
 
-class AggregationMem(object):
-    def __init__(self, parallelize=False):
+class AggregationMem(ABC):
+    def __init__(self):
         pass
         
     def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
@@ -22,7 +21,10 @@ class AggregationMem(object):
     def get_subset_for_value(self, required_value: float):
         pass
 
-
+    @classmethod
+    @abstractmethod
+    def get_name(cls) -> str:
+        pass
 
 
 def get_index_set(df: pd.DataFrame) -> set:
@@ -109,7 +111,8 @@ class SumAggregation(AggregationMem):
 
 
 class SumAggregationOpt(AggregationMem):
-    def __init__(self, parallelize=False):
+    def __init__(self):
+        super().__init__()
         self.tuples = None
         self.subset_sizes = None
 
@@ -208,6 +211,10 @@ class SumAggregationOpt(AggregationMem):
         #     for item in items_in_key:
         #         print((key[0], item[0]), item[1])
         #         needed_items[(key[0], item[0])] = item[1]
+
+    @classmethod
+    def get_name(cls) -> str:
+        return AggType.SUM.value
 
 
 class MedianAggregationOpt(AggregationMem):
