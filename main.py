@@ -11,15 +11,26 @@ if __name__ == '__main__':
     print("The parsed data is: \n", input_data.df)
     
     if input_data.prune is not None and input_data.mem_opt:
-        subset_df, removed_df = get_optimal_subset_pruning_mem_opt(
-            df=input_data.df,
-            group_cols=input_data.group_cols,
-            agg_col=input_data.agg_col,
-            Agg=input_data.aggregation,
-            max_removed=input_data.prune,
-            time_cutoff_seconds=input_data.time_cutoff_seconds,
-            parallelize=True,
-        )
+        if input_data.agg_name != 'MEDIAN':
+            subset_df, removed_df = get_optimal_subset_pruning_mem_opt(
+                df=input_data.df,
+                group_cols=input_data.group_cols,
+                agg_col=input_data.agg_col,
+                Agg=input_data.aggregation,
+                max_removed=input_data.prune,
+                time_cutoff_seconds=input_data.time_cutoff_seconds,
+                parallelize=True,
+            )
+        else:
+            subset_df, removed_df = get_optimal_subset_F_first(
+                df=input_data.df,
+                group_cols=input_data.group_cols,
+                agg_col=input_data.agg_col,
+                Agg=input_data.aggregation,
+                # time_cutoff_seconds=input_data.time_cutoff_seconds,
+                max_removed=input_data.prune,
+            )
+
     elif input_data.prune is not None:
         subset_df, removed_df = get_optimal_subset_pruning(
             df=input_data.df,

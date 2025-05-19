@@ -16,7 +16,7 @@ class AggregationMem(object):
     def __init__(self, parallelize=False):
         pass
         
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         pass
     
     def get_subset_for_value(self, required_value: float):
@@ -34,17 +34,15 @@ class AggregationFunction(Protocol):
         ...
 
 
-
 class MaxAggregation(AggregationMem):
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         hist = df[agg_col].value_counts().sort_index().cumsum().to_dict()
+        self.df = df
+        self.agg_col = agg_col
         return hist
         
-    def get_subset_for_value(self, df: pd.DataFrame, agg_col: str, required_value: float):
-        return get_index_set(df.loc[df[agg_col].le(required_value)])
-
-
-
+    def get_subset_for_value(self, required_value: float):
+        return get_index_set(self.df.loc[self.df[self.agg_col].le(required_value)])
 
 
 class SumAggregation(AggregationMem):
@@ -52,7 +50,7 @@ class SumAggregation(AggregationMem):
         self.tuples = None
         self.subset_sizes = None
     
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         inf = len(df)+1
         self.tuples = list(df[agg_col].to_dict().items()) # tuples of index and agg_col value
         
@@ -155,7 +153,6 @@ class SumAggregationOpt(AggregationMem):
                     temp_sum_to_max_size[s] = sum_to_max_size[sum_without_vj_items] + num_used_vj_items + 1
 
                 if num_used_vj_items == amt:  # all vj items are used
-                    # TODO understand this part
                     for num_used in range(1, amt + 1):
                         # use as little as possible vj items
                         # temp_sum_to_max_size[s] - current size of optimal solution for sum i (using less than num_used items with "vj")
@@ -167,7 +164,7 @@ class SumAggregationOpt(AggregationMem):
             data.append(current_arr)
         return sum_to_max_size, data
 
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         items = sorted(df[agg_col].values)  # to ensure there are no duplicates
         # make a histogram, sorted by the value.
         self.hist = sorted(list(df[agg_col].value_counts().items()), key=lambda x: x[0])
@@ -214,20 +211,24 @@ class MedianAggregationOpt(AggregationMem):
     def __init__(self, parallelize=False):
         pass
 
-    def get_medians(self, items, hist):
+    def get_medians(self, items, hist, max_removed: int = None):
         output = defaultdict(lambda: -1)  # median to num of remaining items
         data = defaultdict(lambda: ([], 0))  # median to (pivot list, num items on each side)
         # when keeping all items
         n = len(items)
         # single pivot
-        for index in tqdm(range(n)):
+        start, end = 0, n
+        if max_removed is not None:
+            start = max(0, n//2 - max_removed//2 - 1)
+            end = min(n, n//2 + max_removed//2 + 1)
+        for index in tqdm(range(start, end)):
             remaining_on_each_side = min(index, n - index - 1)
             remaining_items = 2 * remaining_on_each_side + 1
             if output[items[index]] < remaining_items:
                 output[items[index]] = remaining_items
                 data[items[index]] = ([items[index]], remaining_on_each_side)  # pivots, how many each side
         # double adjacent pivot
-        for index in tqdm(range(n - 1)):
+        for index in tqdm(range(start, min(end, n - 1))):
             remaining_on_each_side = min(index, n - index - 2)
             remaining_items = 2 * remaining_on_each_side + 2
             median = (items[index] + items[index + 1]) / 2
@@ -239,7 +240,13 @@ class MedianAggregationOpt(AggregationMem):
         for i in tqdm(range(len(hist))):
             remaining_on_the_left += hist[i][1]
             remaining_on_the_right = n - remaining_on_the_left
+            if max_removed is not None and remaining_on_the_left*2 <= n - max_removed:
+                # i is too far to the left
+                continue
             for j in range(i + 1, len(hist)):
+                if max_removed is not None and remaining_on_the_right * 2 <= n - max_removed:
+                    # j is too far to the right
+                    continue
                 median = (hist[i][0] + hist[j][0]) / 2
                 if output[median] < 2 * min(remaining_on_the_left, remaining_on_the_right):
                     output[median] = 2 * min(remaining_on_the_left, remaining_on_the_right)
@@ -248,12 +255,12 @@ class MedianAggregationOpt(AggregationMem):
                 remaining_on_the_right -= hist[j][1]
         return output, data
 
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         items = sorted(df[agg_col].values)  # to ensure there are no duplicates
         # make a histogram, sorted by the value.
         self.hist = sorted(list(df[agg_col].value_counts().items()), key=lambda x: x[0])
 
-        median_to_max_size, data = self.get_medians(items, self.hist)
+        median_to_max_size, data = self.get_medians(items, self.hist, max_removed)
         self.df = df
         self.agg_col = agg_col
         self.data = data
@@ -310,7 +317,7 @@ class AvgAggregation(AggregationMem):
         self.subset_sizes = None
 
     
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         inf = len(df)+1
         self.tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
 
@@ -427,7 +434,7 @@ class AvgAggregationPruning(AggregationMem):
         self.subset_sizes = None
         self.parallelize = parallelize
 
-    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, min_subset_size: int = None) -> Dict[float, int]:
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
         inf = len(df) + 1
         self.tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
 
@@ -441,7 +448,7 @@ class AvgAggregationPruning(AggregationMem):
         subset_sizes[0][s][0] = 0  # initialize with an empty size (size 0) having sum 0
         subset_sizes[0][s - first_value][1] = 1  # Initialize with sum-first_value - when removing the first tuple (subset size 1)
 
-        max_removed = len(df) - min_subset_size if min_subset_size is not None else None
+        #max_removed = len(df) - min_subset_size if min_subset_size is not None else None
 
         for j in tqdm(range(1, len(self.tuples))):
             value = self.tuples[j][1]  # value of the current tuple

@@ -97,7 +97,7 @@ def get_optimal_subset_mem_opt(
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
         agg = Agg()
-        group_to_agg[group_key] = agg # save it for later
+        group_to_agg[group_key] = agg  # save it for later
         current_group_subsets = agg.compute_max_subset_sizes(group_df, agg_col)  # dict of agg_val: maximal subset size
         new_value_subsets: Dict[float, Dict[int, tuple]] = {}  # agg_val of current ri -> {group_id -> (size, agg_val)}
 

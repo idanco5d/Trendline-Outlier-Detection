@@ -38,6 +38,7 @@ MEM_AGGREGATIONS = {
 MEM_AND_PRUNING_AGGREGATIONS = {
     'AVG': AvgAggregationPruning,
     'SUM': SumAggregationOpt,  # TODO: it's not using the pruning but it's already fast. We could still use pruning and see if it helps.
+    'MEDIAN': MedianAggregationOpt,
 }
 
 
@@ -49,9 +50,11 @@ class Input:
     aggregation: Union[AggregationFunction, AggregationPruningFunction, AggregationMem]
     output_folder: str
     orig_fname: str
+    agg_name: str
     prune: int = None
     mem_opt: bool = False
     time_cutoff_seconds: int = None
+
 
 
 def parse_input() -> Input:
@@ -64,11 +67,12 @@ def parse_input() -> Input:
     check_group_cols(df, group_cols)
     prune = args.prune
     mem_opt = args.mem_opt
+    agg_name = args.aggregation_function
     aggregation = get_aggregation_function(args.aggregation_function, is_pruning=prune is not None, is_mem_opt=mem_opt)
     time_cutoff_seconds = args.cutoff_seconds
     return Input(df=df, group_cols=group_cols, agg_col=agg_col, aggregation=aggregation, prune=prune,
                  mem_opt=mem_opt, time_cutoff_seconds=time_cutoff_seconds, 
-                 output_folder=args.output_folder, orig_fname=orig_fname)
+                 output_folder=args.output_folder, orig_fname=orig_fname, agg_name=agg_name)
 
 
 def get_input_arguments() -> argparse.Namespace:

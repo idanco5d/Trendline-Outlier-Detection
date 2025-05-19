@@ -46,10 +46,12 @@ def get_optimal_subset_F_first(
         agg_col: str,
         #agg_func_str: str,
         Agg: Type[AggregationMem],
-        #max_removed: int = None,
+        max_removed: int = None,
 ) -> (pd.DataFrame, pd.DataFrame):
     print(len(df))
-    print("mem opt")
+    print("mem opt, F first")
+    if max_removed is not None:
+        print(f"prune: {max_removed}")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     print("agg result before repair:")
     print(df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median']))
@@ -65,7 +67,7 @@ def get_optimal_subset_F_first(
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
         agg = Agg()
-        output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col)
+        output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col, max_removed)
         aggs[group_key] = agg
         group_keys.append(group_key)
     # Next, compute the solution (main DP).
