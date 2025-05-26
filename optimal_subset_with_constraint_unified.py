@@ -63,7 +63,7 @@ def get_optimal_subset_F_first(
     print(f"prune h: {prune_h}")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     print("agg result before repair:")
-    print(df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median']))
+    print(df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median', 'max']))
 
     output = {}
 
@@ -91,18 +91,29 @@ def get_optimal_subset_F_first(
             H = prune_H(H, max_removed, size_of_groups)
 
     ids_to_keep = []
-    # We don't need to search for the best solution in H because of the pruning.
-    # The solution with the largest x value will be the largest repair.
-    largest_x = H.keys()[-1]
-    print(f"largest_x: {largest_x}, H[largest_x]={H[largest_x]}")
-    agg_values_and_group_keys = H[largest_x][1]
+    if prune_h:
+        # We don't need to search for the best solution in H because of the pruning.
+        # The solution with the largest x value will be the largest repair.
+        largest_x = H.keys()[-1]
+        print(f"largest_x: {largest_x}, H[largest_x]={H[largest_x]}")
+        agg_values_and_group_keys = H[largest_x][1]
+    else:
+        # No pruning - search for the best solution in H
+        best_repair_size = 0
+        agg_values_and_group_keys = None
+        for x in H:
+            repair_size, group_values = H[x]
+            if repair_size > best_repair_size:
+                best_repair_size = repair_size
+                agg_values_and_group_keys = group_values
+
     for agg_value, group_key in agg_values_and_group_keys:
         ids_to_keep.extend(aggs[group_key].get_subset_for_value(agg_value))
 
     subset_df = df.iloc[ids_to_keep]
     removed_df = df.loc[~df.index.isin(ids_to_keep)]
     print("agg result after repair:")
-    print(subset_df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median']))
+    print(subset_df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median', 'max']))
     #print(f"num_removed: {len(removed_df)}")
 
     return subset_df, removed_df
