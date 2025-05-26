@@ -26,7 +26,7 @@ def update_H(F, H, group_id):
     return H
 
 
-def prune_H(H):
+def prune_H(H, max_removed=None, sum_of_groups=None):
     """
     If x1<=x2 and H(x1)>=H(x2), keep only x1, and prune x2.
     :param H: agg value to count of remaining tuples (for groups 1... i-1, such that agg(group i-1) = agg value)
@@ -34,6 +34,10 @@ def prune_H(H):
     max_count = -1
     newH = {}
     for option in H.keys():
+        if max_removed is not None:
+            # compute removal from groups 1,.., i-1. If it's too large, no need to remember this option.
+            if (sum_of_groups - H[option][0]) > max_removed:
+                continue
         if H[option][0] > max_count:
             newH[option] = H[option]
             max_count = H[option][0]
@@ -47,11 +51,16 @@ def get_optimal_subset_F_first(
         #agg_func_str: str,
         Agg: Type[AggregationMem],
         max_removed: int = None,
+        prune_dp_by_max_removed: int = None,
+        prune_h: bool = False,
 ) -> (pd.DataFrame, pd.DataFrame):
     print(len(df))
     print("mem opt, F first")
     if max_removed is not None:
-        print(f"prune: {max_removed}")
+        print(f"prune agg pack: {max_removed}")
+    if prune_dp_by_max_removed is not None:
+        print(f"prune dp: {prune_dp_by_max_removed}")
+    print(f"prune h: {prune_h}")
     df = df.loc[df[group_cols].notnull().all(axis=1)].reset_index(drop=True)
     print("agg result before repair:")
     print(df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median']))
@@ -59,10 +68,11 @@ def get_optimal_subset_F_first(
     output = {}
 
     H = SortedDict()
-    H[0] = (0, [])  # first element is the amount of items, the second is the sum in each key group
+    H[0] = (0, [])  # first element is the amount of items, the second is the aggregation value in each key group
     group_keys = []
 
     aggs = {}
+    group_sizes = {}
     # First compute F (realizable aggregations and max subset size) for each group.
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
@@ -70,11 +80,15 @@ def get_optimal_subset_F_first(
         output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col, max_removed)
         aggs[group_key] = agg
         group_keys.append(group_key)
+        group_sizes[group_key] = len(group_df)
     # Next, compute the solution (main DP).
+    size_of_groups = 0
     for group_key in group_keys:
         print(f"merging + pruning group: {group_key}")
+        size_of_groups += group_sizes[group_key]
         H = update_H(output[group_key], H, group_key)
-        H = prune_H(H)
+        if prune_h:
+            H = prune_H(H, max_removed, size_of_groups)
 
     ids_to_keep = []
     # We don't need to search for the best solution in H because of the pruning.

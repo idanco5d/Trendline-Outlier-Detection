@@ -28,7 +28,9 @@ if __name__ == '__main__':
                 agg_col=input_data.agg_col,
                 Agg=input_data.aggregation,
                 # time_cutoff_seconds=input_data.time_cutoff_seconds,
-                max_removed=input_data.prune,
+                max_removed=input_data.prune_aggpack_by_greedy,
+                prune_dp_by_max_removed=input_data.prune_dp_by_greedy,
+                prune_h=input_data.prune_h
             )
 
     elif input_data.prune is not None:

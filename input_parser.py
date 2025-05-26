@@ -51,10 +51,11 @@ class Input:
     output_folder: str
     orig_fname: str
     agg_name: str
-    prune: int = None
     mem_opt: bool = False
+    prune_h: bool = None
+    prune_aggpack_by_greedy: int = False
+    prune_dp_by_greedy: int = False
     time_cutoff_seconds: int = None
-
 
 
 def parse_input() -> Input:
@@ -65,13 +66,17 @@ def parse_input() -> Input:
     check_agg_col(df, agg_col)
     group_cols = args.grouping_columns
     check_group_cols(df, group_cols)
-    prune = args.prune
+    prune_dp_by_greedy = args.prune_dp_by_greedy
+    prune_aggpack_by_greedy = args.prune_aggpack_by_greedy
+    prune_h = args.prune_h
     mem_opt = args.mem_opt
     agg_name = args.aggregation_function
     aggregation = get_aggregation_function(args.aggregation_function, is_pruning=prune is not None, is_mem_opt=mem_opt)
     time_cutoff_seconds = args.cutoff_seconds
     return Input(df=df, group_cols=group_cols, agg_col=agg_col, aggregation=aggregation, prune=prune,
-                 mem_opt=mem_opt, time_cutoff_seconds=time_cutoff_seconds, 
+                 mem_opt=mem_opt,
+                 prune_h=prune_h, prune_dp_by_greedy=prune_dp_by_greedy, prune_aggpack_by_greedy=prune_aggpack_by_greedy,
+                 time_cutoff_seconds=time_cutoff_seconds,
                  output_folder=args.output_folder, orig_fname=orig_fname, agg_name=agg_name)
 
 
@@ -85,7 +90,10 @@ def get_input_arguments() -> argparse.Namespace:
     parser.add_argument('dataset_file_name', type=str, help='Your dataset csv file')
     parser.add_argument('aggregation_column', type=str, help='Name of the aggregated column')
     parser.add_argument('grouping_columns', nargs='+', type=str, help='Names of the grouping attributes')
-    parser.add_argument('--prune', type=int, metavar='N', help='Prune with an integer parameter N')
+    parser.add_argument('--prune_aggpack_by_greedy', type=int, metavar='N', help='Prune with an integer parameter N')
+    parser.add_argument('--prune_dp_by_greedy', type=int, metavar='N', help='Prune with an integer parameter N')
+    parser.add_argument('--prune_h', action=argparse.BooleanOptionalAction)
+    parser.set_defaults(prune_h=False)
     parser.add_argument('--mem_opt', action=argparse.BooleanOptionalAction)
     parser.set_defaults(mem_opt=False)
     parser.add_argument('--cutoff_seconds', type=int, metavar='N', help='time cutoff in seconds')

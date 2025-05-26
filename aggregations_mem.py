@@ -106,6 +106,76 @@ class SumAggregation(AggregationMem):
         return subset
 
 
+class SumAggregationPruning(AggregationMem):
+    def __init__(self, parallelize=False):
+        self.tuples = None
+        self.subset_sizes = None
+
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
+        self.df = df
+        self.total_sum = self.df[agg_col].sum()
+        inf = len(df) + 1
+        self.tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
+
+        first_value = self.tuples[0][1]
+        # subset_sizes is a dict of the form {j: {s: subset size}},
+        # j - the index of the tuple in an ordered list, s - the sum *of the removed set*.
+        subset_sizes = defaultdict(lambda: defaultdict(lambda: -inf))
+        subset_sizes[0][0] = 0  # initialize with an empty size (size 0) having sum 0
+        subset_sizes[0][first_value] = 1  # Initialize with sum first_value having the first tuple (subset size 1)
+
+        for j in range(1, len(self.tuples)):
+            value = self.tuples[j][1]  # value of the current tuple
+            current_subset_sizes = defaultdict(lambda: -inf)  # Avoid modifying dict while iterating
+
+            for current_sum, subset_size in subset_sizes[j - 1].items():
+                # pruning by a given bound on the solution size
+                if max_removed is not None and subset_size > max_removed:
+                    continue
+                if current_sum not in current_subset_sizes or current_subset_sizes[current_sum] < subset_size:
+                    # without the current tuple
+                    current_subset_sizes[current_sum] = subset_size
+                if current_sum + value not in current_subset_sizes or current_subset_sizes[
+                    current_sum + value] < subset_size + 1:
+                    # with the current tuple
+                    current_subset_sizes[current_sum + value] = subset_size + 1
+            subset_sizes[j] = current_subset_sizes
+        self.subset_sizes = subset_sizes
+        # create a dict of agg_val to max_subset_size:
+        val_to_max_size = {self.total_sum - s: size for s, size in subset_sizes[len(self.tuples) - 1].items()}
+        return val_to_max_size
+
+    def get_subset_for_value(self, required_value: float):
+        required_removed_sum = self.total_sum - required_value
+        if self.subset_sizes is None:
+            raise Exception("Subset sizes empty when get_subset_for_value was called")
+        j = len(self.tuples) - 1
+        # for sanity check - the expected size
+        required_size = self.subset_sizes[j][required_removed_sum]
+        s = required_removed_sum
+        subset = []
+        for j in range(len(self.tuples) - 1, -1, -1):  # j=n,...,0
+            tuple_j_value = self.tuples[j][1]
+            if j == 0:
+                if tuple_j_value == s:
+                    subset.append(self.tuples[j][0])
+                    break
+            else:
+                without_j = self.subset_sizes[j - 1][s]
+                with_j = self.subset_sizes[j - 1][s - tuple_j_value] + 1
+                if with_j >= without_j:
+                    subset.append(self.tuples[j][0])
+                    s -= tuple_j_value
+        if len(subset) != required_size:
+            print(len(subset))
+            print(required_size)
+            raise Exception("returned subset size does not match DP table")
+        if len(subset) != len(set(subset)):
+            raise Exception("return subset has duplicate indices")
+        return subset
+
+
+
 class SumAggregationOpt(AggregationMem):
     def __init__(self, parallelize=False):
         self.tuples = None
@@ -207,6 +277,93 @@ class SumAggregationOpt(AggregationMem):
         #         needed_items[(key[0], item[0])] = item[1]
 
 
+class MedianAggregation(AggregationMem):
+
+    def __init__(self):
+        pass
+
+    def _get_median_subset_odd(self, df: pd.DataFrame, agg_col: str, median: float) -> set[int]:
+        smaller_df = df.loc[df[agg_col].lt(median)]
+        equal_df = df.loc[df[agg_col].eq(median)]
+        greater_df = df.loc[df[agg_col].gt(median)]
+        all_median = df[agg_col].median()
+
+        if all_median > median:
+            subset_df = pd.concat([
+                smaller_df,
+                equal_df,
+                greater_df.head(len(smaller_df) + len(equal_df) - 1)
+            ])
+
+        elif all_median < median:
+            subset_df = pd.concat([
+                smaller_df.tail(len(equal_df) + len(greater_df) - 1),
+                equal_df,
+                greater_df
+            ])
+
+        else:
+            subset_df = df
+
+        if np.abs(subset_df[agg_col].median() - median) > ERROR_EPSILON:
+            raise Exception('Reached wrong median')
+
+        return get_index_set(subset_df)
+
+    def _get_median_subset_even(self, tuples: list[tuple], low_index: float, high_index: float) -> set[int]:
+        median = (tuples[low_index][1] + tuples[high_index][1]) / 2
+        N = len(tuples)
+
+        if low_index < N - high_index - 1:
+            subset = tuples[:low_index + 1] + tuples[high_index: high_index + low_index + 1]
+        elif low_index > N - high_index - 1:
+            subset = tuples[low_index + high_index - N + 1: low_index + 1] + tuples[high_index:]
+        else:
+            subset = tuples[:low_index + 1] + tuples[high_index:]
+
+        new_median = np.median([x[1] for x in subset])
+        if np.abs(new_median - median) > ERROR_EPSILON:
+            print(tuples)
+            print(low_index, high_index)
+            print(tuples[low_index], tuples[high_index])
+            print(subset)
+            print(new_median)
+            print(median)
+            raise Exception('Reached wrong median')
+
+        return set([x[0] for x in subset])
+
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None) -> Dict[float, int]:
+        median_subsets = {}
+        df = df.sort_values(by=agg_col)
+        unique_values = df[agg_col].unique()
+
+        for value in tqdm(unique_values):
+            median_subsets[value] = self._get_median_subset_odd(df, agg_col, value)
+        tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
+        for low_index in tqdm(range(len(tuples))):
+            # TODO: can prune more - if the low_index is too far to the left or high_index too far to the right
+            if max_removed is None:
+                max_distance = len(tuples) - low_index
+            else:
+                max_distance = min(len(tuples) - low_index, max_removed + 1)
+            for high_index in range(low_index + 1,
+                                    low_index + max_distance):  # here we prune: don't consider indices which are too far apart
+                # print(high_index, max_removed)
+                median = (tuples[low_index][1] + tuples[high_index][1]) / 2
+                subset = self._get_median_subset_even(tuples, low_index, high_index)
+                if median not in median_subsets or len(median_subsets[median]) < len(subset):
+                    median_subsets[median] = subset
+        self.median_subsets = median_subsets
+        val_to_max_size = {v: len(subset) for v, subset in self.median_subsets.items()}
+        return val_to_max_size
+
+    def get_subset_for_value(self, required_value: float):
+        return self.median_subsets[required_value]
+
+
+
+
 class MedianAggregationOpt(AggregationMem):
     def __init__(self, parallelize=False):
         pass
@@ -240,7 +397,7 @@ class MedianAggregationOpt(AggregationMem):
         for i in tqdm(range(len(hist))):
             remaining_on_the_left += hist[i][1]
             remaining_on_the_right = n - remaining_on_the_left
-            if max_removed is not None and remaining_on_the_left*2 <= n - max_removed:
+            if max_removed is not None and remaining_on_the_left * 2 <= n - max_removed:
                 # i is too far to the left
                 continue
             for j in range(i + 1, len(hist)):
