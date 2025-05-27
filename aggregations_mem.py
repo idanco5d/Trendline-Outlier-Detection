@@ -343,13 +343,17 @@ class MedianAggregation(AggregationMem):
         tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
         for low_index in tqdm(range(len(tuples))):
             # TODO: can prune more - if the low_index is too far to the left or high_index too far to the right
-            if max_removed is None:
-                max_distance = len(tuples) - low_index
-            else:
+            if max_removed is not None:
+                if low_index*2 < len(tuples) - max_removed: # TODO check with even/odd n and m
+                    continue
                 max_distance = min(len(tuples) - low_index, max_removed + 1)
+            else:
+                max_distance = len(tuples) - low_index
             for high_index in range(low_index + 1,
                                     low_index + max_distance):  # here we prune: don't consider indices which are too far apart
                 # print(high_index, max_removed)
+                if max_removed is not None and high_index*2 > len(tuples) + max_removed:
+                    continue
                 median = (tuples[low_index][1] + tuples[high_index][1]) / 2
                 subset = self._get_median_subset_even(tuples, low_index, high_index)
                 if median not in median_subsets or len(median_subsets[median]) < len(subset):

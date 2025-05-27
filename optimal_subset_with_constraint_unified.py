@@ -5,7 +5,7 @@ from typing import Dict, List, Union, Type
 from aggregations_mem import AggregationMem
 
 
-def update_H(F, H, group_id):
+def update_H_with_pruning(F, H, group_id):
     """
     :param F: dictionary from agg value to count of remaining tuples (for group i)
     :param H: sorted dict of agg value (x) to: (count, [(agg_value, group_id)]) for groups 1..i-1, such that agg value of group i-1 = x)
@@ -23,6 +23,37 @@ def update_H(F, H, group_id):
                 new_list = H[largest_below_agg_value][1].copy()
                 new_list.insert(0, (agg_value, group_id))
                 H[agg_value] = (candidate_repair_size, new_list)
+    return H
+
+
+def update_H_no_pruning(F, H, group_id):
+    """
+    :param F: dictionary from agg value to count of remaining tuples (for group i)
+    :param H: sorted dict of agg value (x) to: (count, [(agg_value, group_id)]) for groups 1..i-1, such that agg value of group i-1 = x)
+    :param group_id: value of group by column that represents group i.
+    :return:
+    """
+    agg_values = sorted(F.keys(), reverse=False)  # sort feasible aggregation values from large to small
+
+    H_keys = sorted(H.keys(), reverse=False) # keep frozen for the iteration
+
+    previous_max_repair_size = 0
+    previous_max_repair_group_values = []
+    H_index = 0
+    for agg_value in agg_values:
+        if F[agg_value] <= 0:
+            continue
+        while H_index < len(H_keys) and H_keys[H_index] <= agg_value:
+            repair_size = H[H_keys[H_index]][0]
+            if repair_size > previous_max_repair_size:
+                previous_max_repair_size = repair_size
+                previous_max_repair_group_values = H[H_keys[H_index]][1].copy()
+            H_index += 1
+        candidate_repair_size = previous_max_repair_size + F[agg_value]
+        if (agg_value not in H) or (candidate_repair_size > H[agg_value][0]):
+            new_list = previous_max_repair_group_values.copy()
+            new_list.insert(0, (agg_value, group_id))
+            H[agg_value] = (candidate_repair_size, new_list)
     return H
 
 
@@ -86,9 +117,11 @@ def get_optimal_subset_F_first(
     for group_key in group_keys:
         print(f"merging + pruning group: {group_key}")
         size_of_groups += group_sizes[group_key]
-        H = update_H(output[group_key], H, group_key)
         if prune_h:
+            H = update_H_with_pruning(output[group_key], H, group_key)
             H = prune_H(H, max_removed, size_of_groups)
+        else:
+            H = update_H_no_pruning(output[group_key], H, group_key)
 
     ids_to_keep = []
     if prune_h:
