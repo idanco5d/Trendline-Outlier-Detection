@@ -119,7 +119,7 @@ def get_optimal_subset_F_first(
         size_of_groups += group_sizes[group_key]
         if prune_h:
             H = update_H_with_pruning(output[group_key], H, group_key)
-            H = prune_H(H, max_removed, size_of_groups)
+            H = prune_H(H, prune_dp_by_max_removed, size_of_groups)
         else:
             H = update_H_no_pruning(output[group_key], H, group_key)
 
