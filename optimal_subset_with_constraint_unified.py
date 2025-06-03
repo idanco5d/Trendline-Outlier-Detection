@@ -60,7 +60,7 @@ def update_H_no_pruning(F, H, group_id):
 def prune_H(H, max_removed=None, sum_of_groups=None):
     """
     If x1<=x2 and H(x1)>=H(x2), keep only x1, and prune x2.
-    :param H: agg value to count of remaining tuples (for groups 1... i-1, such that agg(group i-1) = agg value)
+    :param H: sorted dict of agg value (x) to: (count, [(agg_value, group_id)]) for groups 1..i, such that agg value of group i = x)
     """
     max_count = -1
     newH = {}
@@ -72,6 +72,21 @@ def prune_H(H, max_removed=None, sum_of_groups=None):
         if H[option][0] > max_count:
             newH[option] = H[option]
             max_count = H[option][0]
+    return SortedDict(newH)
+
+
+def prune_H_by_max_removed(H, max_removed, sum_of_groups=None):
+    """
+    If x1<=x2 and H(x1)>=H(x2), keep only x1, and prune x2.
+    :param H: sorted dict of agg value (x) to: (count, [(agg_value, group_id)]) for groups 1..i, such that agg value of group i = x)
+    """
+    newH = {}
+    for option in H.keys():
+        if max_removed is not None:
+            # compute removal from groups 1,.., i-1. If it's too large, no need to remember this option.
+            if (sum_of_groups - H[option][0]) > max_removed:
+                continue
+        newH[option] = H[option]
     return SortedDict(newH)
 
 
@@ -122,6 +137,8 @@ def get_optimal_subset_F_first(
             H = prune_H(H, prune_dp_by_max_removed, size_of_groups)
         else:
             H = update_H_no_pruning(output[group_key], H, group_key)
+            if prune_dp_by_max_removed is not None:
+                H = prune_H_by_max_removed(H, prune_dp_by_max_removed, size_of_groups)
 
     ids_to_keep = []
     if prune_h:
