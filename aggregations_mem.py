@@ -623,12 +623,12 @@ class AvgAggregationPruning(AggregationMem):
                 d = t.format_dict
                 if d['rate'] is not None:
                     remaining_time_estimate = (d['total'] - d['n']) / d['rate']
-                if time_cutoff_seconds is not None and remaining_time_estimate > time_cutoff_seconds:
-                    iterations_over_time_limit += 1
-                if iterations_over_time_limit > 5000:
-                    print(d)
-                    print(f"estimated time left is too high: {remaining_time_estimate / 60} minutes, exiting")
-                    sys.exit()
+                    if time_cutoff_seconds is not None and remaining_time_estimate > time_cutoff_seconds:
+                        iterations_over_time_limit += 1
+                    if iterations_over_time_limit > 5000:
+                        print(d)
+                        print(f"estimated time left is too high: {remaining_time_estimate / 60} minutes, exiting")
+                        sys.exit()
                 value = self.tuples[j][1]  # value of the current tuple
                 current_subset_sizes = defaultdict(
                     lambda: defaultdict(lambda: -inf))  # Avoid modifying dict while iterating
