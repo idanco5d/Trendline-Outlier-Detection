@@ -15,10 +15,10 @@ if __name__ == '__main__':
         group_cols=input_data.group_cols,
         agg_col=input_data.agg_col,
         Agg=input_data.aggregation,
-        # time_cutoff_seconds=input_data.time_cutoff_seconds,
         max_removed=input_data.prune_aggpack_by_greedy,
         prune_dp_by_max_removed=input_data.prune_dp_by_greedy,
-        prune_h=input_data.prune_h
+        prune_h=input_data.prune_h,
+        time_cutoff_seconds=input_data.time_cutoff_seconds,
     )
 
     # if input_data.prune_aggpack_by_greedy is not None and input_data.mem_opt:

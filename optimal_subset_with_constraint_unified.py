@@ -98,6 +98,7 @@ def get_optimal_subset_F_first(
         max_removed: int = None,
         prune_dp_by_max_removed: int = None,
         prune_h: bool = False,
+        time_cutoff_seconds: int = None,
 ) -> (pd.DataFrame, pd.DataFrame):
     print(len(df))
     print("mem opt, F first")
@@ -122,7 +123,7 @@ def get_optimal_subset_F_first(
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
         agg = Agg()
-        output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col, max_removed)
+        output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col, max_removed, time_cutoff_seconds)
         aggs[group_key] = agg
         group_keys.append(group_key)
         group_sizes[group_key] = len(group_df)
