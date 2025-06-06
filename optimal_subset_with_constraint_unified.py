@@ -66,7 +66,7 @@ def prune_H(H, max_removed=None, sum_of_groups=None):
     newH = {}
     for option in H.keys():
         if max_removed is not None:
-            # compute removal from groups 1,.., i-1. If it's too large, no need to remember this option.
+            # compute removal from groups 1,.., i. If it's too large, no need to remember this option.
             if (sum_of_groups - H[option][0]) > max_removed:
                 continue
         if H[option][0] > max_count:
@@ -82,10 +82,9 @@ def prune_H_by_max_removed(H, max_removed, sum_of_groups=None):
     """
     newH = {}
     for option in H.keys():
-        if max_removed is not None:
-            # compute removal from groups 1,.., i-1. If it's too large, no need to remember this option.
-            if (sum_of_groups - H[option][0]) > max_removed:
-                continue
+        # compute removal from groups 1,.., i-1. If it's too large, no need to remember this option.
+        if (sum_of_groups - H[option][0]) > max_removed:
+            continue
         newH[option] = H[option]
     return SortedDict(newH)
 
@@ -134,7 +133,7 @@ def get_optimal_subset_F_first(
         size_of_groups += group_sizes[group_key]
         if prune_h:
             H = update_H_with_pruning(output[group_key], H, group_key)
-            H = prune_H(H, prune_dp_by_max_removed, size_of_groups)
+            H = prune_H(H, prune_dp_by_max_removed, size_of_groups) #TODO: there is a bug here when prune_dp_by_max_removed isn't None!
         else:
             H = update_H_no_pruning(output[group_key], H, group_key)
             if prune_dp_by_max_removed is not None:
