@@ -65,7 +65,7 @@ def prune_H(H, max_removed=None, sum_of_group_sizes=None):
     max_count = -1
     newH = {}
     for option in H.keys():
-        if max_removed is not None:
+        if option > 0 and max_removed is not None:
             # compute removal from groups 1,.., i. If it's too large, no need to remember this option.
             if (sum_of_group_sizes - H[option][0]) > max_removed:
                 continue
@@ -158,6 +158,7 @@ def get_optimal_subset_F_first(
                 agg_values_and_group_keys = group_values
 
     for agg_value, group_key in agg_values_and_group_keys:
+        print(f"find subset for group {group_key} with agg value {agg_value}")
         ids_to_keep.extend(aggs[group_key].get_subset_for_value(agg_value))
 
     subset_df = df.iloc[ids_to_keep]
