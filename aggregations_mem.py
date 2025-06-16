@@ -721,6 +721,7 @@ class AvgAggregationPruning(AggregationMem):
                     s += tuple_j_value
                     c -= 1
         keep = [t[0] for t in self.tuples if t[0] not in subset]
+        #print(f"removed values: {[t[1] for t in self.tuples if t[0] in subset]}")
         actual_avg = np.mean([t[1] for t in self.tuples if t[0] in keep])
         if len(subset) != required_size:
             print(f"removed: {len(subset)}")
@@ -760,9 +761,7 @@ class AvgAggregationPruningHistogram(AggregationMem):
 
         for value, count in self.hist:
             new_dp = defaultdict(lambda: defaultdict(lambda: False))
-            #new_dp = dp.copy()
-            new_came_from = defaultdict(dict)
-            #new_came_from = came_from.copy()
+            new_came_from = came_from.copy()
 
             for curr_sum in dp:
                 for curr_removed in dp[curr_sum]:
@@ -773,9 +772,13 @@ class AvgAggregationPruningHistogram(AggregationMem):
                             break
                         new_dp[new_sum][new_removed] = True
                         if k > 0:
-                            new_came_from[new_sum][new_removed] = (curr_sum, curr_removed, value, k)
+                            if new_sum not in new_came_from or new_removed not in new_came_from[new_sum]:
+                                # if we reach the same sum and count again, keep the previous method of getting there.
+                                new_came_from[new_sum][new_removed] = (curr_sum, curr_removed, value, k)
             dp = new_dp
-            came_from = new_came_from
+            for s in new_came_from:
+                for r in new_came_from[s]:
+                    came_from[s][r] = new_came_from[s][r]
 
         self.dp = dp
         self.came_from = came_from
@@ -812,27 +815,29 @@ class AvgAggregationPruningHistogram(AggregationMem):
         # Backtrack using came_from
         values_to_remove = defaultdict(int)
         s, r = best_sum, best_removed
-        # while (s, r) in self.came_from[s]:
         while s in self.came_from and r in self.came_from[s]:
-            print(f"in the loop: {s}, {r}, {self.came_from[s][r]}")
+            #print(f"in the loop: {s}, {r}, {self.came_from[s][r]}")
             prev_s, prev_r, val, count = self.came_from[s][r]
             values_to_remove[val] += count
             s, r = prev_s, prev_r
-        print(values_to_remove)
+        #print(values_to_remove)
+        #tot = sum([v*c for v,c in values_to_remove.items()])
+        #print(f'sum of values to remove: {tot}')
 
         # Map values to original indices
-        indices_to_remove = []
-        used = defaultdict(int)
-        print("reconstructing subset")
-        for idx, val in tqdm(self.df[self.agg_col].items()):
-            if values_to_remove[val] > used[val]:
-                used[val] += 1
-            else:
-                indices_to_remove.append(idx)
-        indices_to_keep = list(set(self.df.index).difference(indices_to_remove))
-
+        grouped_indices = {k: list(v) for k, v in self.df.groupby(self.agg_col).groups.items()}
+        removal_indices = []
+        for value, required_count in values_to_remove.items():
+            available = [x for x in self.hist if x[0] == value][0][1]
+            if required_count > available:
+                raise ValueError(f"Solution used too many instances of value: {value}, used: {required_count} out of {available}")
+            print(f"value:{value}, required_count: {required_count}, available: {[x for x in self.hist if x[0] == value]}")
+            removal_indices.extend(grouped_indices[value][:required_count])
+        indices_to_keep = list(set(self.df.index).difference(removal_indices))
+        #print(f"to keep: {len(indices_to_keep)}, to remove: {len(removal_indices)}")
+        print(removal_indices)
+        #print(f"sum of removed indexes: {self.df.loc[removal_indices][self.agg_col].sum()}")
         actual_avg = self.df.loc[indices_to_keep, self.agg_col].mean()
         if abs(actual_avg - required_value) > epsilon:
-            print(f"Warning: mismatch in reconstructed avg: expected {required_value}, got {actual_avg}")
-
+            raise ValueError(f"Warning: mismatch in reconstructed avg: expected {required_value}, got {actual_avg}")
         return indices_to_keep
