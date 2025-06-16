@@ -4,6 +4,9 @@ from typing import Dict, Protocol
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 
+from collections import defaultdict, Counter
+import math
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -701,6 +704,8 @@ class AvgAggregationPruning(AggregationMem):
 
         subset = []
         for j in range(len(self.tuples) - 1, -1, -1):  # j=n,...,0
+            if c <= 0:
+                break
             tuple_j_value = self.tuples[j][1]
             if j == 0:
                 if s + tuple_j_value == orig_sum:
@@ -726,3 +731,99 @@ class AvgAggregationPruning(AggregationMem):
         if np.abs(actual_avg - required_value) > ERROR_EPSILON:
             print(f"Mismatch in avg values: actual: {actual_avg} required: {required_value}")
         return keep
+
+
+class AvgAggregationPruningHistogram(AggregationMem):
+    def __init__(self):
+        self.dp = None
+        self.total_count = 0
+        self.total_sum = 0
+        self.hist = None
+        self.came_from = None
+        self.df = None
+        self.agg_col = None
+
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None,
+                                 time_cutoff_seconds: int = None) -> Dict[float, int]:
+        self.df = df
+        self.agg_col = agg_col
+        self.hist = sorted(list(df[agg_col].value_counts().items()), key=lambda x: x[0])
+        self.total_count = len(df)
+        self.total_sum = df[agg_col].sum()
+        # self.histogram = Counter(df[agg_col])
+        # self.total_count = sum(self.histogram.values())
+        # self.total_sum = sum(v * c for v, c in self.hist.items())
+
+        dp = defaultdict(lambda: defaultdict(lambda: False))  # dp[sum][removed_count] = True/False
+        came_from = defaultdict(dict)  # came_from[sum][removed_count] = (prev_sum, prev_removed, value, times_used)
+        dp[self.total_sum][0] = True
+
+        for value, count in self.hist.items():
+            new_dp = defaultdict(lambda: defaultdict(lambda: False))
+            new_came_from = defaultdict(dict)
+
+            for curr_sum in dp:
+                for curr_removed in dp[curr_sum]:
+                    for k in range(0, count + 1):
+                        new_sum = curr_sum - k * value
+                        new_removed = curr_removed + k
+                        if max_removed is not None and new_removed > max_removed:
+                            break
+                        new_dp[new_sum][new_removed] = True
+                        new_came_from[new_sum][new_removed] = (curr_sum, curr_removed, value, k)
+            dp = new_dp
+            came_from = new_came_from
+
+        self.dp = dp
+        self.came_from = came_from
+
+        avg_subsets = {}
+        for s in dp:
+            for removed in dp[s]:
+                kept = self.total_count - removed
+                avg = 0 if kept == 0 else s / kept
+                if avg not in avg_subsets or avg_subsets[avg] < kept:
+                    avg_subsets[avg] = kept
+        return avg_subsets
+
+    def get_subset_for_value(self, required_value: float, epsilon: float = 1e-6) -> list:
+        if self.dp is None or self.came_from is None:
+            raise ValueError("Must run compute_max_subset_sizes first")
+
+        best_sum, best_removed = None, None
+        best_kept = -1
+        for s in self.dp:
+            for removed in self.dp[s]:
+                kept = self.total_count - removed
+                avg = 0 if kept == 0 else s / kept
+                if abs(avg - required_value) <= epsilon and kept > best_kept:
+                    best_sum, best_removed = s, removed
+                    best_kept = kept
+
+        if best_sum is None:
+            raise ValueError("No matching subset found for requested average")
+
+        # Backtrack using came_from
+        values_to_remove = defaultdict(int)
+        s, r = best_sum, best_removed
+        # while (s, r) in self.came_from[s]:
+        while s in self.came_from and r in self.came_from[s]:
+            prev_s, prev_r, val, count = self.came_from[s][r]
+            values_to_remove[val] += count
+            s, r = prev_s, prev_r
+
+        # Map values to original indices
+        indices_to_remove = []
+        used = defaultdict(int)
+        for idx, val in self.df[self.agg_col].items():
+            if values_to_remove[val] > used[val]:
+                used[val] += 1
+            else:
+                indices_to_remove.append(idx)
+        indices_to_keep = set(self.df.index).difference(indices_to_remove)
+
+        actual_avg = self.df.loc[indices_to_keep, self.agg_col].mean()
+        if abs(actual_avg - required_value) > epsilon:
+            print(f"Warning: mismatch in reconstructed avg: expected {required_value}, got {actual_avg}")
+
+        return indices_to_keep
