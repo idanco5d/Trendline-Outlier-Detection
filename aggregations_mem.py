@@ -758,9 +758,11 @@ class AvgAggregationPruningHistogram(AggregationMem):
         came_from = defaultdict(dict)  # came_from[sum][removed_count] = (prev_sum, prev_removed, value, times_used)
         dp[self.total_sum][0] = True
 
-        for value, count in self.hist.items():
+        for value, count in self.hist:
             new_dp = defaultdict(lambda: defaultdict(lambda: False))
+            #new_dp = dp.copy()
             new_came_from = defaultdict(dict)
+            #new_came_from = came_from.copy()
 
             for curr_sum in dp:
                 for curr_removed in dp[curr_sum]:
@@ -770,7 +772,8 @@ class AvgAggregationPruningHistogram(AggregationMem):
                         if max_removed is not None and new_removed > max_removed:
                             break
                         new_dp[new_sum][new_removed] = True
-                        new_came_from[new_sum][new_removed] = (curr_sum, curr_removed, value, k)
+                        if k > 0:
+                            new_came_from[new_sum][new_removed] = (curr_sum, curr_removed, value, k)
             dp = new_dp
             came_from = new_came_from
 
@@ -799,28 +802,34 @@ class AvgAggregationPruningHistogram(AggregationMem):
                 if abs(avg - required_value) <= epsilon and kept > best_kept:
                     best_sum, best_removed = s, removed
                     best_kept = kept
+        print(f"get_subset_for_value: {best_sum}, {best_removed}")
 
         if best_sum is None:
             raise ValueError("No matching subset found for requested average")
+        if best_removed == 0:
+            return self.df.index
 
         # Backtrack using came_from
         values_to_remove = defaultdict(int)
         s, r = best_sum, best_removed
         # while (s, r) in self.came_from[s]:
         while s in self.came_from and r in self.came_from[s]:
+            print(f"in the loop: {s}, {r}, {self.came_from[s][r]}")
             prev_s, prev_r, val, count = self.came_from[s][r]
             values_to_remove[val] += count
             s, r = prev_s, prev_r
+        print(values_to_remove)
 
         # Map values to original indices
         indices_to_remove = []
         used = defaultdict(int)
-        for idx, val in self.df[self.agg_col].items():
+        print("reconstructing subset")
+        for idx, val in tqdm(self.df[self.agg_col].items()):
             if values_to_remove[val] > used[val]:
                 used[val] += 1
             else:
                 indices_to_remove.append(idx)
-        indices_to_keep = set(self.df.index).difference(indices_to_remove)
+        indices_to_keep = list(set(self.df.index).difference(indices_to_remove))
 
         actual_avg = self.df.loc[indices_to_keep, self.agg_col].mean()
         if abs(actual_avg - required_value) > epsilon:

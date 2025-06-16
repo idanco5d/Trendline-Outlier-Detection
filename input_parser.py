@@ -11,7 +11,7 @@ from aggregations import get_avg_subsets, get_count_subsets, get_count_distinct_
 from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning, get_median_subsets_pruning, AggregationPruningFunction
 
 from aggregations_mem import AggregationMem, SumAggregation, SumAggregationOpt, AvgAggregation, AvgAggregationPruning, \
-    MedianAggregationOpt, MedianAggregation, MaxAggregation
+    MedianAggregationOpt, MedianAggregation, MaxAggregation, AvgAggregationPruningHistogram
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -45,6 +45,7 @@ MEM_AND_PRUNING_AGGREGATIONS = {
 OPTIMIZED_AGGREGATIONS = {
     'SUM': SumAggregationOpt,  # agg pack pruning not available
     'MEDIAN': MedianAggregationOpt,
+    'AVG': AvgAggregationPruningHistogram,
 }
 
 
