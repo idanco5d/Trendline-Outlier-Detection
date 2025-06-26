@@ -4,9 +4,11 @@ from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
 from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
 import os
 import time
+import tracemalloc
 
 if __name__ == '__main__':
     s = time.time()
+    tracemalloc.start()
     input_data = parse_input()
     print("The parsed data is: \n", input_data.df)
 
@@ -70,6 +72,8 @@ if __name__ == '__main__':
     #         agg=input_data.aggregation
     #     )
 
+    print(f"maximal memory usage: {tracemalloc.get_traced_memory()[1]}")
+    tracemalloc.stop()
     print(f"Num removed tuples: {len(removed_df)}/{len(input_data.df)}")
     print(f"time: {time.time() - s}")
     print("Optimal solution is: \n", subset_df)
