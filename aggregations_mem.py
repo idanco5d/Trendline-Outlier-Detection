@@ -223,7 +223,7 @@ class SumAggregationOpt(AggregationMem):
                 sum_without_vj_items = s - (num_used_vj_items + 1) * vj
                 # if an item could be included but it doesn't increase the number of items - we don't take it
                 if (num_used_vj_items < amt  # there are unused items of value vj
-                        and sum_without_vj_items >= 0  # TODO: possibly redundant
+                        and sum_to_max_size[sum_without_vj_items] >= 0
                         # and using including n vj items is better than the current optimal solution without vj items
                         and sum_to_max_size[sum_without_vj_items] + num_used_vj_items + 1 > sum_to_max_size[s]):
                     # add another vj item
