@@ -67,8 +67,8 @@ class SumAggregation(AggregationMem):
         subset_sizes[0][0] = 0 # initialize with an empty size (size 0) having sum 0
         subset_sizes[0][first_value] = 1  # Initialize with sum first_value having the first tuple (subset size 1)
 
-        for j in range(1, len(self.tuples)):
-            value = self.tuples[j][1] # value of the current tuple
+        for j in tqdm(range(1, len(self.tuples))):
+            value = self.tuples[j][1]  # value of the current tuple
             current_subset_sizes = defaultdict(lambda: -inf)  # Avoid modifying dict while iterating
             
             for current_sum, subset_size in subset_sizes[j-1].items():
@@ -759,7 +759,7 @@ class AvgAggregationPruningHistogram(AggregationMem):
         came_from = defaultdict(dict)  # came_from[sum][removed_count] = (prev_sum, prev_removed, value, times_used)
         dp[self.total_sum][0] = True
 
-        for value, count in self.hist:
+        for value, count in tqdm(self.hist):
             new_dp = defaultdict(lambda: defaultdict(lambda: False))
             new_came_from = came_from.copy()
 

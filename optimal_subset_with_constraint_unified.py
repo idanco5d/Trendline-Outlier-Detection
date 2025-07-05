@@ -99,6 +99,7 @@ def get_optimal_subset_F_first(
         prune_dp_by_max_removed: int = None,
         prune_h: bool = False,
         time_cutoff_seconds: int = None,
+        htrack_file=None,
 ) -> (pd.DataFrame, pd.DataFrame):
     print(len(df))
     print("mem opt, F first")
@@ -134,11 +135,16 @@ def get_optimal_subset_F_first(
         sum_of_group_sizes += group_sizes[group_key]
         if prune_h:
             H = update_H_with_pruning(output[group_key], H, group_key)
-            H = prune_H(H, prune_dp_by_max_removed, sum_of_group_sizes) #TODO: there is a bug here when prune_dp_by_max_removed isn't None!
+            H = prune_H(H, prune_dp_by_max_removed, sum_of_group_sizes)
         else:
             H = update_H_no_pruning(output[group_key], H, group_key)
             if prune_dp_by_max_removed is not None:
                 H = prune_H_by_max_removed(H, prune_dp_by_max_removed, sum_of_group_sizes)
+        # output the num keys in H
+        if htrack_file is not None:
+            with open(htrack_file, "a") as out:
+                out.write(f"{group_key}, num_keys in H: {len(H)}")
+
 
     ids_to_keep = []
     if prune_h:
