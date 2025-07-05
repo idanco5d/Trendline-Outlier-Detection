@@ -130,6 +130,12 @@ def get_optimal_subset_F_first(
         group_sizes[group_key] = len(group_df)
     # Next, compute the solution (main DP).
     sum_of_group_sizes = 0
+
+    # create a new file for tracking H sizes
+    if htrack_file is not None:
+        htrack = open(htrack_file, "w")
+        htrack.close()
+
     for group_key in group_keys:
         print(f"merging + pruning group: {group_key}")
         sum_of_group_sizes += group_sizes[group_key]
@@ -143,7 +149,7 @@ def get_optimal_subset_F_first(
         # output the num keys in H
         if htrack_file is not None:
             with open(htrack_file, "a") as out:
-                out.write(f"{group_key}, num_keys in H: {len(H)}")
+                out.write(f"{group_key}, num_keys in H: {len(H)}\r\n")
 
 
     ids_to_keep = []
