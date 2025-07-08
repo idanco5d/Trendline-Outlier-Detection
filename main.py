@@ -22,7 +22,7 @@ if __name__ == '__main__':
         prune_dp_by_max_removed=input_data.prune_dp_by_greedy,
         prune_h=input_data.prune_h,
         time_cutoff_seconds=input_data.time_cutoff_seconds,
-        htrack_file=os.path.join(input_data.output_folder, f"htrack-{hprune_str}-{input_data.orig_fname}-{input_data.agg_name}.csv")
+        htrack_file=os.path.join(input_data.output_folder, f"htrack-{hprune_str}-{input_data.orig_fname}-{input_data.agg_name}.txt")
     )
 
     # if input_data.prune_aggpack_by_greedy is not None and input_data.mem_opt:
@@ -82,5 +82,5 @@ if __name__ == '__main__':
     print("The removed tuples are: \n", removed_df[input_data.group_cols].value_counts())
 
     #subset_df.to_csv(os.path.join(args.output_folder, f"dp_result-{input_data.orig_fname}.csv"), index=True)
-    removed_df.to_csv(os.path.join(input_data.output_folder, f"dp_removed-{input_data.orig_fname}-{input_data.agg_name}.txt"), index=True)
+    removed_df.to_csv(os.path.join(input_data.output_folder, f"dp_removed-{input_data.orig_fname}-{input_data.agg_name}.csv"), index=True)
     # print(f"time: {time.time()-s}")
