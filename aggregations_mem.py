@@ -1,6 +1,6 @@
 import sys
 from itertools import combinations
-from typing import Dict, Protocol
+from typing import Dict, Protocol, Set, List
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 
@@ -33,10 +33,10 @@ class AggregationMem(object):
 def get_index_set(df: pd.DataFrame) -> set:
     return set(df.index)
 
-
-class AggregationFunction(Protocol):
-    def __call__(self, df: pd.DataFrame, col: str) -> Dict[float, set[int]]:
-        ...
+#
+# class AggregationFunction(Protocol):
+#     def __call__(self, df: pd.DataFrame, col: str) -> Dict[float, set[int]]:
+#         ...
 
 
 class MaxAggregation(AggregationMem):
@@ -49,6 +49,38 @@ class MaxAggregation(AggregationMem):
         
     def get_subset_for_value(self, required_value: float):
         return get_index_set(self.df.loc[self.df[self.agg_col].le(required_value)])
+
+
+class CountAggregation(AggregationMem):
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None,
+                                 time_cutoff_seconds=None) -> Dict[float, int]:
+        self.df = df
+        return {
+            count: count
+            for count in range(1, len(df) + 1)
+        }
+
+    def get_subset_for_value(self, required_value: float):
+        return get_index_set(self.df.head(required_value))
+
+
+class CountDistinctAggregation(AggregationMem):
+    def compute_max_subset_sizes(self, df: pd.DataFrame, agg_col: str, max_removed: int = None,
+                                 time_cutoff_seconds=None) -> Dict[float, int]:
+        self.df = df
+        num_values = df[agg_col].nunique()
+        value_counts = df[agg_col].value_counts()
+        subsets = {}
+        sizes = {}
+        for count_limit in range(num_values + 1):
+            common_values = value_counts.nlargest(count_limit).index
+            subsets[count_limit] = get_index_set(df.loc[df[agg_col].isin(common_values)])
+            sizes[count_limit] = len(subsets[count_limit])
+        self.subsets = subsets
+        return sizes
+
+    def get_subset_for_value(self, required_value: float):
+        return self.subsets[required_value]
 
 
 class SumAggregation(AggregationMem):
@@ -291,7 +323,7 @@ class MedianAggregation(AggregationMem):
     def __init__(self):
         pass
 
-    def _get_median_subset_odd(self, df: pd.DataFrame, agg_col: str, median: float) -> set[int]:
+    def _get_median_subset_odd(self, df: pd.DataFrame, agg_col: str, median: float) -> Set[int]:
         smaller_df = df.loc[df[agg_col].lt(median)]
         equal_df = df.loc[df[agg_col].eq(median)]
         greater_df = df.loc[df[agg_col].gt(median)]
@@ -319,7 +351,7 @@ class MedianAggregation(AggregationMem):
 
         return get_index_set(subset_df)
 
-    def _get_median_subset_even(self, tuples: list[tuple], low_index: float, high_index: float) -> set[int]:
+    def _get_median_subset_even(self, tuples: List[tuple], low_index: float, high_index: float) -> Set[int]:
         median = (tuples[low_index][1] + tuples[high_index][1]) / 2
         N = len(tuples)
 
