@@ -12,8 +12,6 @@ import pandas as pd
 from tqdm import tqdm
 
 from constants import *
-# ERROR_EPSILON = 0.00001
-# NUM_PROCESSES = 20
 
 
 class AggregationMem(object):
@@ -28,15 +26,8 @@ class AggregationMem(object):
         pass
 
 
-
-
 def get_index_set(df: pd.DataFrame) -> set:
     return set(df.index)
-
-#
-# class AggregationFunction(Protocol):
-#     def __call__(self, df: pd.DataFrame, col: str) -> Dict[float, set[int]]:
-#         ...
 
 
 class MaxAggregation(AggregationMem):
@@ -156,7 +147,6 @@ class SumAggregationPruning(AggregationMem):
         self.total_sum = self.df[agg_col].sum()
         inf = len(df) + 1
         self.tuples = list(df[agg_col].to_dict().items())  # tuples of index and agg_col value
-
         first_value = self.tuples[0][1]
         # subset_sizes is a dict of the form {j: {s: subset size}},
         # j - the index of the tuple in an ordered list, s - the sum *of the removed set*.
@@ -170,11 +160,11 @@ class SumAggregationPruning(AggregationMem):
 
             for current_sum, subset_size in subset_sizes[j - 1].items():
                 # pruning by a given bound on the solution size
-                if max_removed is not None and subset_size > max_removed:
-                    continue
                 if current_sum not in current_subset_sizes or current_subset_sizes[current_sum] < subset_size:
                     # without the current tuple
                     current_subset_sizes[current_sum] = subset_size
+                if max_removed is not None and subset_size > max_removed:
+                    continue
                 if current_sum + value not in current_subset_sizes or current_subset_sizes[
                     current_sum + value] < subset_size + 1:
                     # with the current tuple
@@ -182,7 +172,7 @@ class SumAggregationPruning(AggregationMem):
             subset_sizes[j] = current_subset_sizes
         self.subset_sizes = subset_sizes
         # create a dict of agg_val to max_subset_size:
-        val_to_max_size = {self.total_sum - s: size for s, size in subset_sizes[len(self.tuples) - 1].items()}
+        val_to_max_size = {self.total_sum - s: len(df) - size for s, size in subset_sizes[len(self.tuples) - 1].items()}
         return val_to_max_size
 
     def get_subset_for_value(self, required_value: float):
@@ -191,8 +181,8 @@ class SumAggregationPruning(AggregationMem):
             raise Exception("Subset sizes empty when get_subset_for_value was called")
         j = len(self.tuples) - 1
         # for sanity check - the expected size
-        required_size = self.subset_sizes[j][required_removed_sum]
-        s = required_removed_sum
+        required_size = len(self.tuples) - self.subset_sizes[j][required_removed_sum]
+        s = required_value
         subset = []
         for j in range(len(self.tuples) - 1, -1, -1):  # j=n,...,0
             tuple_j_value = self.tuples[j][1]
@@ -212,8 +202,8 @@ class SumAggregationPruning(AggregationMem):
             raise Exception("returned subset size does not match DP table")
         if len(subset) != len(set(subset)):
             raise Exception("return subset has duplicate indices")
+        #print(subset, required_size)
         return subset
-
 
 
 class SumAggregationOpt(AggregationMem):
@@ -471,7 +461,6 @@ class MedianAggregationOpt(AggregationMem):
         return median_to_max_size
 
     def get_subset_histogram_for_median(self, target):
-        # TODO compare the expected number of removal to the actual set of tuples
         pivots, remaining_on_each_side = self.data[target]
         values_needed = []
         amount_needed = []
