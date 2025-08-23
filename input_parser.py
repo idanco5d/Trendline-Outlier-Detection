@@ -1,7 +1,7 @@
 import argparse
 import os
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List, Union, Optional
 
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy
@@ -50,6 +50,20 @@ OPTIMIZED_AGGREGATIONS = {
     'AVG': AvgAggregationPruningHistogram,
 }
 
+@dataclass
+class RawArgs:
+    aggregation_function: str
+    dataset_file_name: str
+    aggregation_column: str
+    grouping_columns: list[str]
+    output_folder: str
+    prune_aggpack_by_greedy: Optional[int] = None
+    prune_dp_by_greedy: Optional[int] = None
+    prune_h: Optional[bool] = None
+    mem_opt: Optional[bool] = None
+    agg_pack_opt: Optional[bool] = None
+    cutoff_seconds: Optional[int] = None
+
 
 @dataclass
 class Input:
@@ -68,8 +82,8 @@ class Input:
     time_cutoff_seconds: int = None
 
 
-def parse_input() -> Input:
-    args = get_input_arguments()
+def parse_input(initial_args: RawArgs | None = None) -> Input:
+    args = get_input_arguments() if initial_args is None else initial_args
     df = pd.read_csv(args.dataset_file_name)
     orig_fname = os.path.basename(args.dataset_file_name)
     agg_col = args.aggregation_column
