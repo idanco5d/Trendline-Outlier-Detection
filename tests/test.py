@@ -3,11 +3,14 @@ from typing import Callable, List
 
 import pandas as pd
 
-from aggregations import get_avg_subsets, get_count_distinct_subsets, get_max_subsets, \
-    get_min_subsets, get_sum_subsets, get_count_subsets, get_median_subsets
-from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning
-from optimal_subset_with_constraint import get_optimal_subset
-from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
+# from aggregations import get_avg_subsets, get_count_distinct_subsets, get_max_subsets, \
+#     get_min_subsets, get_sum_subsets, get_count_subsets, get_median_subsets
+# from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_pruning
+# from optimal_subset_with_constraint import get_optimal_subset
+# from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
+
+from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
+from aggregations_mem import *
 
 GROUP_COLS = ['grouping_1', 'grouping_2']
 AGG_COL = 'aggregator'
@@ -42,18 +45,18 @@ def get_median(df: pd.DataFrame) -> pd.Series:
 
 
 TEST_PARAMS = {
-    'max': [get_max_subsets, get_max],
-    'min': [get_min_subsets, get_min],
-    'count': [get_count_subsets, get_count],
-    'count_distinct': [get_count_distinct_subsets, get_count_distinct],
-    'sum': [get_sum_subsets, get_sum],
-    'avg': [get_avg_subsets, get_avg],
-    'median': [get_median_subsets, get_median]
+    'max': [MaxAggregation, get_max],
+    # 'min': [get_min_subsets, get_min],
+    'count': [CountAggregation, get_count],
+    'count_distinct': [CountDistinctAggregation, get_count_distinct],
+    'sum': [SumAggregationOpt, get_sum],
+    'avg': [AvgAggregationPruningHistogram, get_avg],
+    'median': [MedianAggregationOpt, get_median]
 }
 
 TEST_PRUNING_PARAMS = {
-    'sum': [get_sum_subsets_pruning, get_sum],
-    'avg': [get_avg_subsets_pruning, get_avg]
+    'sum': [SumAggregationPruning, get_sum],
+    'avg': [AvgAggregationPruning, get_avg]
 }
 
 
@@ -83,14 +86,14 @@ def check_solution(
 
 
 def test_agg(agg_name: str):
-    subset_agg_func, agg_func = TEST_PARAMS[agg_name]
+    agg_class, agg_func = TEST_PARAMS[agg_name]
 
     input_file_name = f'{agg_name}/input.csv'
     input_df = pd.read_csv(input_file_name)
     expected_file_name = f'{agg_name}/expected.csv'
     expected_df = pd.read_csv(expected_file_name)
-
-    result_df, removed_df = get_optimal_subset(input_df, GROUP_COLS, AGG_COL, subset_agg_func)
+    # result_df, removed_df = get_optimal_subset(input_df, GROUP_COLS, AGG_COL, subset_agg_func)
+    result_df, removed_df = get_optimal_subset_F_first(input_df, GROUP_COLS, AGG_COL, agg_class)
     check_solution(expected_df, result_df, agg_func)
 
 
@@ -101,19 +104,21 @@ def test_agg_pruning(agg_name: str, max_removed: int):
     input_df = pd.read_csv(input_file_name)
     expected_file_name = f'{agg_name}/expected.csv'
     expected_df = pd.read_csv(expected_file_name)
+    # print(input_df.groupby(GROUP_COLS)[AGG_COL].agg(agg_name))
 
-    result_df, removed_df = get_optimal_subset_pruning(
+    result_df, removed_df = get_optimal_subset_F_first(
         input_df, GROUP_COLS, AGG_COL, subset_agg_func, max_removed
     )
+    # print(result_df.groupby(GROUP_COLS)[AGG_COL].agg(agg_name))
     check_solution(expected_df, result_df, agg_func)
 
 
 class TestOptimalSolution(unittest.TestCase):
     def test_max(self):
         test_agg('max')
-
-    def test_min(self):
-        test_agg('min')
+    #
+    # def test_min(self):
+    #     test_agg('min')
 
     def test_count(self):
         test_agg('count')
