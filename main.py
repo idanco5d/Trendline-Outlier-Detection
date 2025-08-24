@@ -1,4 +1,4 @@
-from input_parser import parse_input
+from input_parser import parse_input, RawArgs
 from optimal_subset_with_constraint import get_optimal_subset, get_optimal_subset_mem_opt, get_optimal_subset_pruning_mem_opt
 from optimal_subset_with_constraints_pruning import get_optimal_subset_pruning
 from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
@@ -6,13 +6,10 @@ import os
 import time
 import tracemalloc
 
-if __name__ == '__main__':
-    s = time.time()
-    tracemalloc.start()
-    input_data = parse_input()
+def run_algorithm(initial_args: RawArgs | None = None) -> tuple:
+    input_data = parse_input(initial_args)
     print("The parsed data is: \n", input_data.df)
     hprune_str = 'hprune' if input_data.prune_h else 'noprune'
-
     subset_df, removed_df = get_optimal_subset_F_first(
         df=input_data.df,
         group_cols=input_data.group_cols,
@@ -22,8 +19,16 @@ if __name__ == '__main__':
         prune_dp_by_max_removed=input_data.prune_dp_by_greedy,
         prune_h=input_data.prune_h,
         time_cutoff_seconds=input_data.time_cutoff_seconds,
-        htrack_file=os.path.join(input_data.output_folder, f"htrack-{hprune_str}-{input_data.orig_fname}-{input_data.agg_name}.txt")
+        htrack_file=os.path.join(input_data.output_folder,
+                                 f"htrack-{hprune_str}-{input_data.orig_fname}-{input_data.agg_name}.txt")
     )
+    return input_data, subset_df, removed_df
+
+if __name__ == '__main__':
+    s = time.time()
+    tracemalloc.start()
+
+    input_data, subset_df, removed_df = run_algorithm()
 
     # if input_data.prune_aggpack_by_greedy is not None and input_data.mem_opt:
     #     if input_data.agg_name != 'MEDIAN':
