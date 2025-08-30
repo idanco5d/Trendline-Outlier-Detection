@@ -87,5 +87,7 @@ if __name__ == '__main__':
     print("The removed tuples are: \n", removed_df[input_data.group_cols].value_counts())
 
     #subset_df.to_csv(os.path.join(args.output_folder, f"dp_result-{input_data.orig_fname}.csv"), index=True)
-    removed_df.to_csv(os.path.join(input_data.output_folder, f"dp_removed-{input_data.orig_fname}-{input_data.agg_name}.csv"), index=True)
+    if input_data.output_folder != '':  # [Carmel] I should've marked this field as of "None" type
+        # but I don't want to mess with the 'Input' dataclass at the moment...
+        removed_df.to_csv(os.path.join(input_data.output_folder, f"dp_removed-{input_data.orig_fname}-{input_data.agg_name}.csv"), index=True)
     # print(f"time: {time.time()-s}")
