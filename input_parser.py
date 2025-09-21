@@ -53,16 +53,17 @@ OPTIMIZED_AGGREGATIONS = {
 @dataclass
 class RawArgs:
     aggregation_function: str
-    dataset_file_name: str
     aggregation_column: str
     grouping_columns: list[str]
     output_folder: str
-    prune_aggpack_by_greedy: Optional[int] = None
-    prune_dp_by_greedy: Optional[int] = None
-    prune_h: Optional[bool] = None
-    mem_opt: Optional[bool] = None
-    agg_pack_opt: Optional[bool] = None
-    cutoff_seconds: Optional[int] = None
+    dataset_file_name: str | None = None
+    data: dict | None = None
+    prune_aggpack_by_greedy: int | None = None
+    prune_dp_by_greedy: int | None = None
+    prune_h: bool | None = None
+    mem_opt: bool | None = None
+    agg_pack_opt: bool | None = None
+    cutoff_seconds: int | None = None
 
 
 @dataclass
@@ -84,8 +85,13 @@ class Input:
 
 def parse_input(initial_args: RawArgs | None = None) -> Input:
     args = get_input_arguments() if initial_args is None else initial_args
-    df = pd.read_csv(args.dataset_file_name)
-    orig_fname = os.path.basename(args.dataset_file_name)
+    if (args.dataset_file_name is None or args.dataset_file_name == "") and initial_args.data is None:
+        raise ValueError("one of {'dataset_file_name', 'data'} arguments must be set in order to read data!")
+    if initial_args is not None and initial_args.data is not None:
+        df = pd.DataFrame(initial_args.data)
+    else:
+        df = pd.read_csv(args.dataset_file_name)
+    orig_fname = os.path.basename(args.dataset_file_name) if args.dataset_file_name is not None else ''
     agg_col = args.aggregation_column
     check_agg_col(df, agg_col)
     group_cols = args.grouping_columns

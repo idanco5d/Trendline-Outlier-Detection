@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 
 from input_parser import RawArgs
 from main import run_algorithm
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/algorithm", methods=['POST'])
 def run_algorithm_route():
