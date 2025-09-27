@@ -12,6 +12,7 @@ from aggregations_pruning import get_sum_subsets_pruning, get_avg_subsets_prunin
 
 from aggregations_mem import AggregationMem, SumAggregation, SumAggregationOpt, AvgAggregation, AvgAggregationPruning, \
     MedianAggregationOpt, MedianAggregation, MaxAggregation, AvgAggregationPruningHistogram, CountAggregation, CountDistinctAggregation
+from class_models import RawArgs
 
 AGGREGATIONS = {
     'AVG': get_avg_subsets,
@@ -49,21 +50,6 @@ OPTIMIZED_AGGREGATIONS = {
     'MEDIAN': MedianAggregationOpt,
     'AVG': AvgAggregationPruningHistogram,
 }
-
-@dataclass
-class RawArgs:
-    aggregation_function: str
-    aggregation_column: str
-    grouping_columns: list[str]
-    output_folder: str
-    dataset_file_name: str | None = None
-    data: dict | None = None
-    prune_aggpack_by_greedy: int | None = None
-    prune_dp_by_greedy: int | None = None
-    prune_h: bool | None = None
-    mem_opt: bool | None = None
-    agg_pack_opt: bool | None = None
-    cutoff_seconds: int | None = None
 
 
 @dataclass
