@@ -4,8 +4,9 @@ from dataclasses import asdict
 import pandas as pd
 
 from background import my_celery_app
-from input_parser import parse_input, RawArgs
+from input_parser import parse_input
 from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
+from class_models import RawArgs
 
 
 def _run_algorithm(initial_args: RawArgs | None = None) -> tuple:
