@@ -1,21 +1,21 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-
-from input_parser import RawArgs
+from class_models import AlgoResponse, RawArgs
 from main import run_algorithm
 
-app = Flask(__name__)
-CORS(app)
+app = FastAPI()
 
-@app.route("/algorithm", methods=['POST'])
-def run_algorithm_route():
-    try:
-        request_args = RawArgs(**request.json)
-        _, subset_df, removed_df = run_algorithm(initial_args=request_args)
-        return jsonify({
-            'subset_df': subset_df.to_dict('records'),
-            'removed_df': removed_df.to_dict('records')
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # TODO: add production frontend as well
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+@app.post('/', response_model=AlgoResponse)
+def algorithm(body: RawArgs):
+    _, subset_df, removed_df = run_algorithm(initial_args=body)
+    return AlgoResponse(subset_df=subset_df.to_dict('records'),
+                        removed_df=removed_df.to_dict('records'))
