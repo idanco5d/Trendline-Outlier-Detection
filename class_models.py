@@ -19,3 +19,6 @@ class RawArgs(BaseModel):
 class AlgoResponse(BaseModel):
     subset_df: list[dict]
     removed_df: list[dict]
+
+class BackgroundAlgoResponse(BaseModel):
+    task_id: str
