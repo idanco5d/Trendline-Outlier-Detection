@@ -1,0 +1,1 @@
+from background.celery_app import my_celery_app
