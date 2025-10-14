@@ -1,8 +1,9 @@
 from sortedcontainers import SortedDict
 import pandas as pd
-from typing import Dict, List, Union, Type
+from typing import List, Union, Type
 
 from aggregations_mem import AggregationMem
+from pubsub import get_pubsub_topic, with_redis_pubsub
 
 
 def update_H_with_pruning(F, H, group_id):
@@ -88,6 +89,9 @@ def prune_H_by_max_removed(H, max_removed, sum_of_group_sizes=None):
         newH[option] = H[option]
     return SortedDict(newH)
 
+@with_redis_pubsub
+def _notify_intermediate_result(data: dict) -> dict:
+    return data
 
 def get_optimal_subset_F_first(
         df: pd.DataFrame,
@@ -100,6 +104,7 @@ def get_optimal_subset_F_first(
         prune_h: bool = False,
         time_cutoff_seconds: int = None,
         htrack_file=None,
+        **kwargs
 ) -> (pd.DataFrame, pd.DataFrame):
     print(len(df))
     print("mem opt, F first")
@@ -124,7 +129,14 @@ def get_optimal_subset_F_first(
     for group_key, group_df in df.groupby(group_cols):  # groupby keys are sorted by default
         print(f"working on group: {group_key}")
         agg = Agg()
-        output[group_key] = agg.compute_max_subset_sizes(group_df, agg_col, max_removed, time_cutoff_seconds)
+        group_output = agg.compute_max_subset_sizes(group_df, agg_col, max_removed, time_cutoff_seconds)
+        if kwargs.get('notify'):
+            group_name = "_".join(str(g) for g in group_key)
+            _notify_intermediate_result(
+                topic=get_pubsub_topic(task_id=kwargs.get('task_id')),
+                data={group_name: group_output}
+            )
+        output[group_key] = group_output
         aggs[group_key] = agg
         group_keys.append(group_key)
         group_sizes[group_key] = len(group_df)
@@ -177,24 +189,5 @@ def get_optimal_subset_F_first(
     removed_df = df.loc[~df.index.isin(ids_to_keep)]
     print("agg result after repair:")
     print(subset_df.groupby(group_cols)[agg_col].agg(['sum', 'count', 'mean', 'median', 'max']))
-    #print(f"num_removed: {len(removed_df)}")
 
     return subset_df, removed_df
-
-    # for agg_value, key in H[H.keys()[-1]][1]:
-    #     items_in_key = list(get_subset_with_sum(vals[key], data[key], agg_value))
-    #     for item in items_in_key:
-    #         print((key[0], item[0]), item[1])
-    #         needed_items[(key[0], item[0])] = item[1]
-    #
-    # indices_to_remove = []
-    # for idx, row in df.iterrows():
-    #     if ((row[group_cols[0]], row[agg_col]) in needed_items) and needed_items[
-    #         (row[group_cols[0]], row[agg_col])] > 0:
-    #         needed_items[(row[group_cols[0]], row[agg_col])] = needed_items[(row[group_cols[0]], row[agg_col])] - 1
-    #     else:
-    #         indices_to_remove.append(idx)
-    # print(indices_to_remove)
-    # df2 = df.drop(indices_to_remove).reset_index(drop=True)
-    # df2.to_csv('df2_output.csv', index=False)
-    # print(H[H.keys()[-1]])

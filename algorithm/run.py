@@ -9,7 +9,7 @@ from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
 from class_models import RawArgs
 
 
-def _run_algorithm(initial_args: RawArgs | None = None) -> tuple:
+def _run_algorithm(initial_args: RawArgs | None = None, **kwargs) -> tuple:
     input_data = parse_input(initial_args)
     print("The parsed data is: \n", input_data.df)
     hprune_str = 'hprune' if input_data.prune_h else 'noprune'
@@ -23,7 +23,8 @@ def _run_algorithm(initial_args: RawArgs | None = None) -> tuple:
         prune_h=input_data.prune_h,
         time_cutoff_seconds=input_data.time_cutoff_seconds,
         htrack_file=os.path.join(input_data.output_folder,
-                                 f"htrack-{hprune_str}-{input_data.orig_fname}-{input_data.agg_name}.txt")
+                                 f"htrack-{hprune_str}-{input_data.orig_fname}-{input_data.agg_name}.txt"),
+        **kwargs
     )
     return input_data, subset_df, removed_df
 
@@ -32,11 +33,15 @@ def run_algorithm(initial_args: RawArgs | None = None) -> tuple:
     return _run_algorithm(initial_args)
 
 
-@my_celery_app.task
-def run_algorithm_background(initial_args: dict | None = None) -> tuple:
+@my_celery_app.task(bind=True)
+def run_algorithm_background(self, initial_args: dict | None = None) -> tuple:
+    task_id = self.request.id
     if initial_args is not None:
         initial_args = RawArgs(**initial_args)
-    input_data, subset_df, removed_df = _run_algorithm(initial_args)
+    input_data, subset_df, removed_df = _run_algorithm(
+        initial_args,
+        task_id=task_id,
+        notify=True)
 
     input_data_dict = asdict(input_data)
 
