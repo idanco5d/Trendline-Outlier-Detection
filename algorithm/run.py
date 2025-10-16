@@ -7,6 +7,7 @@ from background import my_celery_app
 from input_parser import parse_input
 from optimal_subset_with_constraint_unified import get_optimal_subset_F_first
 from class_models import RawArgs
+from pubsub import get_redis_sync_client, redis_sync_client_cleanup
 
 
 def _run_algorithm(initial_args: RawArgs | None = None, **kwargs) -> tuple:
@@ -38,10 +39,12 @@ def run_algorithm_background(self, initial_args: dict | None = None) -> tuple:
     task_id = self.request.id
     if initial_args is not None:
         initial_args = RawArgs(**initial_args)
+    redis_client = get_redis_sync_client()
     input_data, subset_df, removed_df = _run_algorithm(
         initial_args,
         task_id=task_id,
-        notify=True)
+        notify=True,
+        redis_client=redis_client)
 
     input_data_dict = asdict(input_data)
 
@@ -50,5 +53,7 @@ def run_algorithm_background(self, initial_args: dict | None = None) -> tuple:
             input_data_dict[key] = value.to_dict('records')
         elif isinstance(value, type):
             input_data_dict[key] = f"<type:{value.__name__}>"
+
+    redis_sync_client_cleanup(client=redis_client)
 
     return input_data_dict, subset_df.to_dict('records'), removed_df.to_dict('records')
