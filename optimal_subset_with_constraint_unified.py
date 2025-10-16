@@ -1,9 +1,12 @@
-from sortedcontainers import SortedDict
+import json
 import pandas as pd
+import redis
+
+from sortedcontainers import SortedDict
 from typing import List, Union, Type
 
 from aggregations_mem import AggregationMem
-from pubsub import get_pubsub_topic, with_redis_pubsub
+from pubsub import get_pubsub_topic
 
 
 def update_H_with_pruning(F, H, group_id):
@@ -89,9 +92,14 @@ def prune_H_by_max_removed(H, max_removed, sum_of_group_sizes=None):
         newH[option] = H[option]
     return SortedDict(newH)
 
-@with_redis_pubsub
-def _notify_intermediate_result(data: dict) -> dict:
-    return data
+
+def _notify_intermediate_result(
+        task_id: str,
+        data: dict,
+        redis_client: redis.Redis
+):
+    topic = get_pubsub_topic(task_id)
+    redis_client.publish(topic, json.dumps(data))
 
 def get_optimal_subset_F_first(
         df: pd.DataFrame,
@@ -133,8 +141,9 @@ def get_optimal_subset_F_first(
         if kwargs.get('notify'):
             group_name = "_".join(str(g) for g in group_key)
             _notify_intermediate_result(
-                topic=get_pubsub_topic(task_id=kwargs.get('task_id')),
-                data={group_name: group_output}
+                task_id=kwargs.get('task_id'),
+                data={group_name: group_output},
+                redis_client=kwargs.get('redis_client')
             )
         output[group_key] = group_output
         aggs[group_key] = agg
